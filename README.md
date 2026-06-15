@@ -50,6 +50,7 @@
 - `WasherState`、`WasherMode`、`WaterTemperature`、`SpinSpeed` 等 enum，用于表达设备状态和运行模式
 - `WasherProgramConfig` 配置表，用于管理快洗、棉织物、轻柔洗、强力洗、节能模式等不同洗衣程序
 - `WashingMachine` struct，用于保存状态、上一状态、模式、水温、转速、剩余时间、进度、水位、能耗等级、门锁和错误码
+- `startWashingMachine()`、`pauseWashingMachine()`、`resumeWashingMachine()`、`resetWashingMachine()`，用于表达真实控制面板输入对应的底层控制动作
 - `updateWashingMachineState()` 周期性状态更新函数，用于模拟嵌入式主循环 / RTOS task 中的洗衣机 FSM
 - `RefrigeratorMode`、`CompressorLevel`、`EnergyStatus` 等 enum，用于表达冰箱模式、压缩机档位和能耗状态
 - `Refrigerator` struct，用于保存当前温度、目标温度、门状态、压缩机状态、能耗状态和 warning flags
@@ -59,24 +60,30 @@
 
 - 使用 `enum` 表达设备状态和运行模式，避免用零散数字或字符串驱动控制逻辑。
 - 使用 `struct` 管理设备配置和运行数据，使 GUI 层可以稳定读取状态、进度、温度、告警等字段。
-- 使用周期性 update 函数模拟嵌入式主循环、定时器任务或 RTOS task。
+- 使用 `startWashingMachine()` 表示从待机进入运行流程，并在启动时锁门。
+- 使用 `pauseWashingMachine()` 和 `resumeWashingMachine()` 通过 `previousState` 实现暂停 / 恢复。
+- 使用 `resetWashingMachine()` 模拟用户点击重置后的设备复位逻辑。
+- 使用 `updateWashingMachineState()` 模拟嵌入式主循环、定时器任务或 RTOS task。
+- 使用 `remainingMinutes` 和 `progressPercent` 同步运行进度、剩余时间和 GUI 显示。
 - 洗衣机适合讲有限状态机：`IDLE -> WASHING -> RINSING -> SPINNING -> FINISHED`，并支持暂停、恢复、重置和错误状态。
 - 冰箱适合讲温度边界、模式参数、门状态和 warning bit flag。
 - 冰箱告警使用 `warningFlags` 统一管理，便于 GUI 层通过位运算判断当前应该显示哪些提醒。
+- 使用宏定义统一管理冷藏 / 冷冻温度范围和高温告警阈值，避免在逻辑中散落魔法数字。
+- 关键函数都加入空指针保护，体现嵌入式 C 代码的安全边界意识。
 
 ## 8. JavaScript 与 C 逻辑的关系
 
-JavaScript 负责网页中的真实交互：按钮点击、模式切换、状态更新和 DOM 渲染。它使用清晰的数据 model 管理 UI 状态，并用洗衣机 FSM 和冰箱阈值判断模拟设备逻辑。
+JavaScript 负责网页中的真实交互：按钮点击、模式切换、状态更新和 DOM 渲染。浏览器不能直接运行普通 C 文件，因此 JavaScript 是为了让作品集 demo 能在浏览器里交互展示。
 
-C 文件用于讲解“如果这是一个真实嵌入式家电项目，底层逻辑可以如何组织”。两者表达的是同一类控制思想：状态集中管理，周期性更新，UI 根据状态刷新，而不是把逻辑散落在界面代码里。
+`appliance_logic.c` 不参与网页运行。C 文件用于讲解“如果这是一个真实嵌入式家电项目，底层逻辑可以如何组织”。两者表达的是同一类控制思想：状态集中管理，周期性更新，UI 根据状态刷新，而不是把逻辑散落在界面代码里。
 
 ## 9. 面试讲解思路
 
 1. 先说明项目是一个网页可视化展示版，用于模拟智能家电触控屏 GUI。
-2. 再说明网页交互由 JavaScript 驱动，方便在浏览器中直接演示。
+2. 再说明网页交互由 JavaScript 驱动，因为浏览器不能直接运行普通 C 文件。
 3. 然后重点讲 `appliance_logic.c`，说明它是展示用 C 逻辑片段，不被浏览器运行时调用。
-4. 洗衣机部分重点讲有限状态机、程序配置表、进度百分比和门锁状态。
-5. 冰箱部分重点讲模式切换、温度边界、压缩机档位、能耗状态和 warning bit flag。
+4. 洗衣机部分重点讲有限状态机：待机、洗涤、漂洗、脱水、暂停、恢复、完成、重置。
+5. 冰箱部分重点讲温度阈值、门状态、warning bit flag，以及多个告警可以同时存在。
 6. 最后说明 GUI 与底层 C 逻辑的映射关系：GUI 接收输入并显示状态，C 逻辑负责设备状态更新和控制决策。
 
 ## 10. GUI 与 C 逻辑映射表
@@ -85,13 +92,19 @@ C 文件用于讲解“如果这是一个真实嵌入式家电项目，底层逻
 | --- | --- |
 | 点击开始 | `startWashingMachine()` |
 | 点击暂停 | `pauseWashingMachine()` |
+| 点击恢复 | `resumeWashingMachine()` |
 | 点击重置 | `resetWashingMachine()` |
 | 洗衣阶段变化 | `updateWashingMachineState()` |
+| 剩余时间显示 | `remainingMinutes` |
+| 洗衣进度条 | `progressPercent` |
 | 洗衣模式选择 | `selectWasherProgram()` |
 | 冰箱模式切换 | `setRefrigeratorMode()` |
-| 温度调节 | `setFridgeTemperature()` / `setFreezerTemperature()` |
-| 开门提醒 | `WARNING_DOOR_OPEN` |
-| 高温提醒 | `WARNING_FRIDGE_HIGH_TEMP` / `WARNING_FREEZER_HIGH_TEMP` |
+| 冷藏温度调节 | `setFridgeTemperature()` |
+| 冷冻温度调节 | `setFreezerTemperature()` |
+| 冰箱开门提醒 | `WARNING_DOOR_OPEN` |
+| 冷藏高温提醒 | `WARNING_FRIDGE_HIGH_TEMP` |
+| 冷冻高温提醒 | `WARNING_FREEZER_HIGH_TEMP` |
+| 告警标签显示 | `warningFlags` |
 
 ## 11. 页面交互说明
 

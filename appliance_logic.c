@@ -8,7 +8,7 @@
  * 可以如何组织状态机、结构体、周期性任务和告警 bit flag。
  *
  * 面试讲解重点：
- * 1. 洗衣机：有限状态机控制洗涤、漂洗、脱水、完成阶段
+ * 1. 洗衣机：有限状态机控制洗涤、漂洗、脱水、暂停、完成阶段
  * 2. 冰箱：温度边界、模式切换、门状态和告警 flag
  * 3. GUI：负责显示状态和接收输入
  * 4. C 逻辑：负责设备状态更新和控制决策
@@ -34,6 +34,16 @@
 #define WARNING_FRIDGE_HIGH_TEMP     0x02
 #define WARNING_FREEZER_HIGH_TEMP    0x04
 #define WARNING_SENSOR_FAULT         0x08
+
+/*
+ * warningFlags 使用 bit flag 管理多个告警：
+ * - |=  用于设置某个告警
+ * - &= ~ 用于清除某个告警
+ * - &   用于判断某个告警是否存在
+ *
+ * 多个告警可以同时存在，例如开门 + 冷藏高温：
+ * warningFlags = WARNING_DOOR_OPEN | WARNING_FRIDGE_HIGH_TEMP;
+ */
 
 typedef enum {
     WASHER_IDLE = 0,
@@ -154,28 +164,36 @@ void initWashingMachine(WashingMachine *washer)
 
 void startWashingMachine(WashingMachine *washer)
 {
-    if (washer == 0 || washer->state == WASHER_ERROR) {
+    if (washer == 0 || washer->isRunning) {
         return;
     }
 
-    if (washer->state == WASHER_FINISHED) {
-        washer->progressPercent = 0;
-        washer->remainingMinutes = washer->totalMinutes;
-    }
+    if (washer->state == WASHER_IDLE || washer->state == WASHER_FINISHED) {
+        washer->state = WASHER_WASHING;
+        washer->previousState = WASHER_IDLE;
+        washer->isRunning = true;
+        washer->isDoorLocked = true;
 
-    washer->isRunning = true;
-    washer->isDoorLocked = true;
-    setWasherState(washer, WASHER_WASHING);
+        if (washer->remainingMinutes == 0) {
+            washer->remainingMinutes = washer->totalMinutes;
+        }
+
+        if (washer->progressPercent >= WASHER_PROGRESS_MAX) {
+            washer->progressPercent = 0;
+        }
+    }
 }
 
 void pauseWashingMachine(WashingMachine *washer)
 {
-    if (washer == 0 || !washer->isRunning || washer->state == WASHER_FINISHED) {
+    if (washer == 0 || !washer->isRunning) {
         return;
     }
 
+    washer->previousState = washer->state;
+    washer->state = WASHER_PAUSED;
     washer->isRunning = false;
-    setWasherState(washer, WASHER_PAUSED);
+    washer->isDoorLocked = true;
 }
 
 void resumeWashingMachine(WashingMachine *washer)
@@ -184,32 +202,21 @@ void resumeWashingMachine(WashingMachine *washer)
         return;
     }
 
+    washer->state = washer->previousState;
     washer->isRunning = true;
     washer->isDoorLocked = true;
-
-    if (washer->progressPercent < WASHER_WASH_END_PERCENT) {
-        setWasherState(washer, WASHER_WASHING);
-    } else if (washer->progressPercent < WASHER_RINSE_END_PERCENT) {
-        setWasherState(washer, WASHER_RINSING);
-    } else {
-        setWasherState(washer, WASHER_SPINNING);
-    }
 }
 
 void resetWashingMachine(WashingMachine *washer)
 {
-    const WasherProgramConfig *config;
-
     if (washer == 0) {
         return;
     }
 
-    config = getWasherProgramConfig(washer->mode);
-
     washer->state = WASHER_IDLE;
     washer->previousState = WASHER_IDLE;
-    washer->remainingMinutes = config->totalMinutes;
     washer->progressPercent = 0;
+    washer->remainingMinutes = washer->totalMinutes;
     washer->isRunning = false;
     washer->isDoorLocked = false;
     washer->errorCode = 0;
@@ -217,6 +224,7 @@ void resetWashingMachine(WashingMachine *washer)
 
 /*
  * updateWashingMachineState()
+ * ------------------------------------------------------------
  *
  * 真实嵌入式设备中，这类 update 函数通常由定时器中断、RTOS task
  * 或主循环周期性调用。这里每次调用模拟一个控制周期，用进度百分比

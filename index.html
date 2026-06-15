@@ -332,7 +332,8 @@
     WASHER_RINSING,
     WASHER_SPINNING,
     WASHER_PAUSED,
-    WASHER_FINISHED
+    WASHER_FINISHED,
+    WASHER_ERROR
 } WasherState;
 
 typedef struct {
@@ -346,7 +347,60 @@ typedef struct {
     uint8_t progressPercent;
     bool isRunning;
     bool isDoorLocked;
+    uint8_t errorCode;
 } WashingMachine;
+
+void startWashingMachine(WashingMachine *washer)
+{
+    if (washer == 0 || washer-&gt;isRunning) {
+        return;
+    }
+
+    if (washer-&gt;state == WASHER_IDLE ||
+        washer-&gt;state == WASHER_FINISHED) {
+        washer-&gt;state = WASHER_WASHING;
+        washer-&gt;previousState = WASHER_IDLE;
+        washer-&gt;isRunning = true;
+        washer-&gt;isDoorLocked = true;
+    }
+}
+
+void pauseWashingMachine(WashingMachine *washer)
+{
+    if (washer == 0 || !washer-&gt;isRunning) {
+        return;
+    }
+
+    washer-&gt;previousState = washer-&gt;state;
+    washer-&gt;state = WASHER_PAUSED;
+    washer-&gt;isRunning = false;
+    washer-&gt;isDoorLocked = true;
+}
+
+void resumeWashingMachine(WashingMachine *washer)
+{
+    if (washer == 0 || washer-&gt;state != WASHER_PAUSED) {
+        return;
+    }
+
+    washer-&gt;state = washer-&gt;previousState;
+    washer-&gt;isRunning = true;
+    washer-&gt;isDoorLocked = true;
+}
+
+void resetWashingMachine(WashingMachine *washer)
+{
+    if (washer == 0) {
+        return;
+    }
+
+    washer-&gt;state = WASHER_IDLE;
+    washer-&gt;previousState = WASHER_IDLE;
+    washer-&gt;progressPercent = 0;
+    washer-&gt;remainingMinutes = washer-&gt;totalMinutes;
+    washer-&gt;isDoorLocked = false;
+    washer-&gt;errorCode = 0;
+}
 
 void updateWashingMachineState(WashingMachine *washer)
 {
@@ -355,6 +409,8 @@ void updateWashingMachineState(WashingMachine *washer)
     }
 
     washer-&gt;progressPercent++;
+    washer-&gt;remainingMinutes =
+        washer-&gt;totalMinutes * (100 - washer-&gt;progressPercent) / 100;
 
     if (washer-&gt;progressPercent &lt; 45) {
         setWasherState(washer, WASHER_WASHING);
@@ -365,6 +421,7 @@ void updateWashingMachineState(WashingMachine *washer)
     } else {
         washer-&gt;isRunning = false;
         washer-&gt;isDoorLocked = false;
+        washer-&gt;remainingMinutes = 0;
         setWasherState(washer, WASHER_FINISHED);
     }
 }</code></pre>
@@ -372,7 +429,10 @@ void updateWashingMachineState(WashingMachine *washer)
 
           <article class="code-block">
             <h3>冰箱告警逻辑</h3>
-            <pre><code>#define WARNING_DOOR_OPEN           0x01
+            <pre><code>#define FRIDGE_HIGH_TEMP_LIMIT      8
+#define FREEZER_HIGH_TEMP_LIMIT    -12
+
+#define WARNING_DOOR_OPEN           0x01
 #define WARNING_FRIDGE_HIGH_TEMP    0x02
 #define WARNING_FREEZER_HIGH_TEMP   0x04
 
@@ -396,13 +456,13 @@ void checkRefrigeratorWarnings(Refrigerator *fridge)
         fridge-&gt;warningFlags &amp;= (uint8_t)~WARNING_DOOR_OPEN;
     }
 
-    if (fridge-&gt;fridgeTemp &gt;= 8) {
+    if (fridge-&gt;fridgeTemp &gt;= FRIDGE_HIGH_TEMP_LIMIT) {
         fridge-&gt;warningFlags |= WARNING_FRIDGE_HIGH_TEMP;
     } else {
         fridge-&gt;warningFlags &amp;= (uint8_t)~WARNING_FRIDGE_HIGH_TEMP;
     }
 
-    if (fridge-&gt;freezerTemp &gt;= -12) {
+    if (fridge-&gt;freezerTemp &gt;= FREEZER_HIGH_TEMP_LIMIT) {
         fridge-&gt;warningFlags |= WARNING_FREEZER_HIGH_TEMP;
     } else {
         fridge-&gt;warningFlags &amp;= (uint8_t)~WARNING_FREEZER_HIGH_TEMP;
