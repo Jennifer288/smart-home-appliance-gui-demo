@@ -61,14 +61,16 @@
 - 使用 `enum` 表达设备状态和运行模式，避免用零散数字或字符串驱动控制逻辑。
 - 使用 `struct` 管理设备配置和运行数据，使 GUI 层可以稳定读取状态、进度、温度、告警等字段。
 - 使用 `startWashingMachine()` 表示从待机进入运行流程，并在启动时锁门。
+- `startWashingMachine()` 支持从完成状态再次开始；当 `progressPercent` 已到 100 或 `remainingMinutes` 为 0 时，会恢复进度和剩余时间。
 - 使用 `pauseWashingMachine()` 和 `resumeWashingMachine()` 通过 `previousState` 实现暂停 / 恢复。
-- 使用 `resetWashingMachine()` 模拟用户点击重置后的设备复位逻辑。
-- 使用 `updateWashingMachineState()` 模拟嵌入式主循环、定时器任务或 RTOS task。
+- 使用 `resetWashingMachine()` 模拟用户点击重置后的设备复位逻辑，并清除运行状态回到待机。
+- 使用 `updateWashingMachineState()` 模拟嵌入式主循环、定时器任务或 RTOS task，并对进度做 100% 上限保护。
 - 使用 `remainingMinutes` 和 `progressPercent` 同步运行进度、剩余时间和 GUI 显示。
 - 洗衣机适合讲有限状态机：`IDLE -> WASHING -> RINSING -> SPINNING -> FINISHED`，并支持暂停、恢复、重置和错误状态。
 - 冰箱适合讲温度边界、模式参数、门状态和 warning bit flag。
 - 冰箱告警使用 `warningFlags` 统一管理，便于 GUI 层通过位运算判断当前应该显示哪些提醒。
 - 使用宏定义统一管理冷藏 / 冷冻温度范围和高温告警阈值，避免在逻辑中散落魔法数字。
+- `checkRefrigeratorWarnings()` 加入空指针保护，体现 C 代码安全性。
 - 关键函数都加入空指针保护，体现嵌入式 C 代码的安全边界意识。
 
 ## 8. JavaScript 与 C 逻辑的关系

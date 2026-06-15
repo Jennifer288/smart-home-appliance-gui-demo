@@ -358,6 +358,14 @@ void startWashingMachine(WashingMachine *washer)
 
     if (washer-&gt;state == WASHER_IDLE ||
         washer-&gt;state == WASHER_FINISHED) {
+        if (washer-&gt;progressPercent &gt;= 100) {
+            washer-&gt;progressPercent = 0;
+        }
+
+        if (washer-&gt;remainingMinutes == 0) {
+            washer-&gt;remainingMinutes = washer-&gt;totalMinutes;
+        }
+
         washer-&gt;state = WASHER_WASHING;
         washer-&gt;previousState = WASHER_IDLE;
         washer-&gt;isRunning = true;
@@ -398,6 +406,7 @@ void resetWashingMachine(WashingMachine *washer)
     washer-&gt;previousState = WASHER_IDLE;
     washer-&gt;progressPercent = 0;
     washer-&gt;remainingMinutes = washer-&gt;totalMinutes;
+    washer-&gt;isRunning = false;
     washer-&gt;isDoorLocked = false;
     washer-&gt;errorCode = 0;
 }
@@ -408,7 +417,10 @@ void updateWashingMachineState(WashingMachine *washer)
         return;
     }
 
-    washer-&gt;progressPercent++;
+    if (washer-&gt;progressPercent &lt; 100) {
+        washer-&gt;progressPercent++;
+    }
+
     washer-&gt;remainingMinutes =
         washer-&gt;totalMinutes * (100 - washer-&gt;progressPercent) / 100;
 
@@ -419,9 +431,10 @@ void updateWashingMachineState(WashingMachine *washer)
     } else if (washer-&gt;progressPercent &lt; 100) {
         setWasherState(washer, WASHER_SPINNING);
     } else {
+        washer-&gt;progressPercent = 100;
+        washer-&gt;remainingMinutes = 0;
         washer-&gt;isRunning = false;
         washer-&gt;isDoorLocked = false;
-        washer-&gt;remainingMinutes = 0;
         setWasherState(washer, WASHER_FINISHED);
     }
 }</code></pre>
@@ -450,6 +463,10 @@ typedef struct {
 
 void checkRefrigeratorWarnings(Refrigerator *fridge)
 {
+    if (fridge == 0) {
+        return;
+    }
+
     if (fridge-&gt;doorOpen) {
         fridge-&gt;warningFlags |= WARNING_DOOR_OPEN;
     } else {

@@ -10,7 +10,7 @@
  * 面试讲解重点：
  * 1. 洗衣机：有限状态机控制洗涤、漂洗、脱水、暂停、完成阶段
  * 2. 冰箱：温度边界、模式切换、门状态和告警 flag
- * 3. GUI：负责显示状态和接收输入
+ * 3. GUI：负责显示状态和接收用户输入
  * 4. C 逻辑：负责设备状态更新和控制决策
  */
 
@@ -169,18 +169,18 @@ void startWashingMachine(WashingMachine *washer)
     }
 
     if (washer->state == WASHER_IDLE || washer->state == WASHER_FINISHED) {
-        washer->state = WASHER_WASHING;
-        washer->previousState = WASHER_IDLE;
-        washer->isRunning = true;
-        washer->isDoorLocked = true;
+        if (washer->progressPercent >= WASHER_PROGRESS_MAX) {
+            washer->progressPercent = 0;
+        }
 
         if (washer->remainingMinutes == 0) {
             washer->remainingMinutes = washer->totalMinutes;
         }
 
-        if (washer->progressPercent >= WASHER_PROGRESS_MAX) {
-            washer->progressPercent = 0;
-        }
+        washer->state = WASHER_WASHING;
+        washer->previousState = WASHER_IDLE;
+        washer->isRunning = true;
+        washer->isDoorLocked = true;
     }
 }
 
@@ -366,15 +366,15 @@ void checkRefrigeratorWarnings(Refrigerator *fridge)
     }
 
     if (fridge->fridgeTemp >= FRIDGE_HIGH_TEMP_LIMIT) {
-        setWarningFlag(fridge, WARNING_FRIDGE_HIGH_TEMP);
+        fridge->warningFlags |= WARNING_FRIDGE_HIGH_TEMP;
     } else {
-        clearWarningFlag(fridge, WARNING_FRIDGE_HIGH_TEMP);
+        fridge->warningFlags &= (uint8_t)~WARNING_FRIDGE_HIGH_TEMP;
     }
 
     if (fridge->freezerTemp >= FREEZER_HIGH_TEMP_LIMIT) {
-        setWarningFlag(fridge, WARNING_FREEZER_HIGH_TEMP);
+        fridge->warningFlags |= WARNING_FREEZER_HIGH_TEMP;
     } else {
-        clearWarningFlag(fridge, WARNING_FREEZER_HIGH_TEMP);
+        fridge->warningFlags &= (uint8_t)~WARNING_FREEZER_HIGH_TEMP;
     }
 
     if (fridge->sensorFault) {
