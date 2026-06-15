@@ -336,6 +336,10 @@
     WASHER_ERROR
 } WasherState;
 
+#define WASHER_ERROR_NONE           0x00
+#define WASHER_ERROR_INVALID_STATE  0x01
+#define WASHER_ERROR_DOOR_UNLOCKED  0x02
+
 typedef struct {
     WasherState state;
     WasherState previousState;
@@ -370,6 +374,7 @@ void startWashingMachine(WashingMachine *washer)
         washer-&gt;previousState = WASHER_IDLE;
         washer-&gt;isRunning = true;
         washer-&gt;isDoorLocked = true;
+        washer-&gt;errorCode = WASHER_ERROR_NONE;
     }
 }
 
@@ -391,9 +396,18 @@ void resumeWashingMachine(WashingMachine *washer)
         return;
     }
 
-    washer-&gt;state = washer-&gt;previousState;
-    washer-&gt;isRunning = true;
-    washer-&gt;isDoorLocked = true;
+    if (washer-&gt;previousState == WASHER_WASHING ||
+        washer-&gt;previousState == WASHER_RINSING ||
+        washer-&gt;previousState == WASHER_SPINNING) {
+        washer-&gt;state = washer-&gt;previousState;
+        washer-&gt;isRunning = true;
+        washer-&gt;isDoorLocked = true;
+    } else {
+        washer-&gt;state = WASHER_ERROR;
+        washer-&gt;isRunning = false;
+        washer-&gt;isDoorLocked = false;
+        washer-&gt;errorCode = WASHER_ERROR_INVALID_STATE;
+    }
 }
 
 void resetWashingMachine(WashingMachine *washer)
@@ -408,12 +422,19 @@ void resetWashingMachine(WashingMachine *washer)
     washer-&gt;remainingMinutes = washer-&gt;totalMinutes;
     washer-&gt;isRunning = false;
     washer-&gt;isDoorLocked = false;
-    washer-&gt;errorCode = 0;
+    washer-&gt;errorCode = WASHER_ERROR_NONE;
 }
 
 void updateWashingMachineState(WashingMachine *washer)
 {
     if (washer == 0 || !washer-&gt;isRunning) {
+        return;
+    }
+
+    if (!washer-&gt;isDoorLocked) {
+        washer-&gt;state = WASHER_ERROR;
+        washer-&gt;isRunning = false;
+        washer-&gt;errorCode = WASHER_ERROR_DOOR_UNLOCKED;
         return;
     }
 
@@ -445,6 +466,7 @@ void updateWashingMachineState(WashingMachine *washer)
             <pre><code>#define FRIDGE_HIGH_TEMP_LIMIT      8
 #define FREEZER_HIGH_TEMP_LIMIT    -12
 
+#define WARNING_NONE                0x00
 #define WARNING_DOOR_OPEN           0x01
 #define WARNING_FRIDGE_HIGH_TEMP    0x02
 #define WARNING_FREEZER_HIGH_TEMP   0x04

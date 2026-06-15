@@ -52,6 +52,7 @@
 - `WashingMachine` struct，用于保存状态、上一状态、模式、水温、转速、剩余时间、进度、水位、能耗等级、门锁和错误码
 - `startWashingMachine()`、`pauseWashingMachine()`、`resumeWashingMachine()`、`resetWashingMachine()`，用于表达真实控制面板输入对应的底层控制动作
 - `updateWashingMachineState()` 周期性状态更新函数，用于模拟嵌入式主循环 / RTOS task 中的洗衣机 FSM
+- `WASHER_ERROR` 和 `errorCode` 用于表达异常路径，例如非法状态恢复和运行中门锁异常释放
 - `RefrigeratorMode`、`CompressorLevel`、`EnergyStatus` 等 enum，用于表达冰箱模式、压缩机档位和能耗状态
 - `Refrigerator` struct，用于保存当前温度、目标温度、门状态、压缩机状态、能耗状态和 warning flags
 - `checkRefrigeratorWarnings()` 使用 bit flag 统一管理开门提醒、冷藏高温、冷冻高温、传感器故障等告警
@@ -62,13 +63,17 @@
 - 使用 `struct` 管理设备配置和运行数据，使 GUI 层可以稳定读取状态、进度、温度、告警等字段。
 - 使用 `startWashingMachine()` 表示从待机进入运行流程，并在启动时锁门。
 - `startWashingMachine()` 支持从完成状态再次开始；当 `progressPercent` 已到 100 或 `remainingMinutes` 为 0 时，会恢复进度和剩余时间。
+- `startWashingMachine()` 成功启动时会清除历史错误码，避免旧错误影响新一轮运行。
 - 使用 `pauseWashingMachine()` 和 `resumeWashingMachine()` 通过 `previousState` 实现暂停 / 恢复。
 - 使用 `resetWashingMachine()` 模拟用户点击重置后的设备复位逻辑，并清除运行状态回到待机。
+- `resetWashingMachine()` 会清除错误码并回到待机状态。
 - 使用 `updateWashingMachineState()` 模拟嵌入式主循环、定时器任务或 RTOS task，并对进度做 100% 上限保护。
+- `WASHER_ERROR` 不是装饰性状态；运行中如果检测到门锁异常释放，会停止运行并记录 `WASHER_ERROR_DOOR_UNLOCKED`。
 - 使用 `remainingMinutes` 和 `progressPercent` 同步运行进度、剩余时间和 GUI 显示。
 - 洗衣机适合讲有限状态机：`IDLE -> WASHING -> RINSING -> SPINNING -> FINISHED`，并支持暂停、恢复、重置和错误状态。
 - 冰箱适合讲温度边界、模式参数、门状态和 warning bit flag。
 - 冰箱告警使用 `warningFlags` 统一管理，便于 GUI 层通过位运算判断当前应该显示哪些提醒。
+- `WARNING_NONE = 0x00` 表示当前无告警；多个 warning 可以通过 bit flag 同时存在，例如 `WARNING_DOOR_OPEN | WARNING_FRIDGE_HIGH_TEMP`。
 - 使用宏定义统一管理冷藏 / 冷冻温度范围和高温告警阈值，避免在逻辑中散落魔法数字。
 - `checkRefrigeratorWarnings()` 加入空指针保护，体现 C 代码安全性。
 - 关键函数都加入空指针保护，体现嵌入式 C 代码的安全边界意识。
@@ -87,6 +92,8 @@ JavaScript 负责网页中的真实交互：按钮点击、模式切换、状态
 4. 洗衣机部分重点讲有限状态机：待机、洗涤、漂洗、脱水、暂停、恢复、完成、重置。
 5. 冰箱部分重点讲温度阈值、门状态、warning bit flag，以及多个告警可以同时存在。
 6. 最后说明 GUI 与底层 C 逻辑的映射关系：GUI 接收输入并显示状态，C 逻辑负责设备状态更新和控制决策。
+
+洗衣机状态机中预留了 `WASHER_ERROR` 和 `errorCode`，用于模拟真实家电设备中的安全异常处理。例如运行中如果检测到门锁异常释放，系统会停止运行并进入错误状态；Reset 会清除错误并回到待机。这让状态机不仅能表达正常流程，也能表达异常处理路径。
 
 ## 10. GUI 与 C 逻辑映射表
 

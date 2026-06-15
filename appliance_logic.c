@@ -21,6 +21,10 @@
 #define WASHER_WASH_END_PERCENT     45U
 #define WASHER_RINSE_END_PERCENT    75U
 
+#define WASHER_ERROR_NONE           0x00
+#define WASHER_ERROR_INVALID_STATE  0x01
+#define WASHER_ERROR_DOOR_UNLOCKED  0x02
+
 #define FRIDGE_TEMP_MIN              2
 #define FRIDGE_TEMP_MAX              8
 #define FREEZER_TEMP_MIN           -24
@@ -143,7 +147,7 @@ void selectWasherProgram(WashingMachine *washer, WasherMode mode)
     washer->progressPercent = 0;
     washer->waterLevel = config->waterLevel;
     washer->energyLevel = config->energyLevel;
-    washer->errorCode = 0;
+    washer->errorCode = WASHER_ERROR_NONE;
     setWasherState(washer, WASHER_IDLE);
 }
 
@@ -157,7 +161,7 @@ void initWashingMachine(WashingMachine *washer)
     washer->previousState = WASHER_IDLE;
     washer->isRunning = false;
     washer->isDoorLocked = false;
-    washer->errorCode = 0;
+    washer->errorCode = WASHER_ERROR_NONE;
 
     selectWasherProgram(washer, WASHER_MODE_QUICK);
 }
@@ -181,6 +185,7 @@ void startWashingMachine(WashingMachine *washer)
         washer->previousState = WASHER_IDLE;
         washer->isRunning = true;
         washer->isDoorLocked = true;
+        washer->errorCode = WASHER_ERROR_NONE;
     }
 }
 
@@ -202,9 +207,18 @@ void resumeWashingMachine(WashingMachine *washer)
         return;
     }
 
-    washer->state = washer->previousState;
-    washer->isRunning = true;
-    washer->isDoorLocked = true;
+    if (washer->previousState == WASHER_WASHING ||
+        washer->previousState == WASHER_RINSING ||
+        washer->previousState == WASHER_SPINNING) {
+        washer->state = washer->previousState;
+        washer->isRunning = true;
+        washer->isDoorLocked = true;
+    } else {
+        washer->state = WASHER_ERROR;
+        washer->isRunning = false;
+        washer->isDoorLocked = false;
+        washer->errorCode = WASHER_ERROR_INVALID_STATE;
+    }
 }
 
 void resetWashingMachine(WashingMachine *washer)
@@ -219,7 +233,7 @@ void resetWashingMachine(WashingMachine *washer)
     washer->remainingMinutes = washer->totalMinutes;
     washer->isRunning = false;
     washer->isDoorLocked = false;
-    washer->errorCode = 0;
+    washer->errorCode = WASHER_ERROR_NONE;
 }
 
 /*
@@ -241,6 +255,18 @@ void updateWashingMachineState(WashingMachine *washer)
     }
 
     if (washer->state == WASHER_ERROR || washer->state == WASHER_PAUSED) {
+        return;
+    }
+
+    /*
+     * Safety check: during a washing cycle the door must stay locked.
+     * If the lock is unexpectedly released, stop the cycle and surface
+     * a deterministic error code for GUI / service diagnostics.
+     */
+    if (!washer->isDoorLocked) {
+        washer->state = WASHER_ERROR;
+        washer->isRunning = false;
+        washer->errorCode = WASHER_ERROR_DOOR_UNLOCKED;
         return;
     }
 
