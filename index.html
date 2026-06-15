@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta
+    name="description"
+    content="智能家电图形界面演示项目：使用 HTML、CSS、JavaScript 模拟洗衣机和冰箱嵌入式触控屏 GUI，并通过 C 文件展示状态机与控制逻辑。"
+  />
+  <title>智能家电图形界面演示项目</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav-shell" aria-label="主导航">
+      <a class="brand" href="#top" aria-label="回到顶部">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span>
+        </span>
+        <span>智能家电 GUI</span>
+      </a>
+      <div class="nav-links">
+        <a href="#overview">项目简介</a>
+        <a href="#devices">设备控制</a>
+        <a href="#logic">C 逻辑</a>
+        <a href="#highlights">技术亮点</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero section">
+      <div class="hero-copy">
+        <p class="eyebrow">作品集项目 / 嵌入式 HMI 演示</p>
+        <h1>智能家电图形界面演示项目</h1>
+        <p class="hero-lede">
+          面向家电行业 GUI / 嵌入式交互开发方向，模拟洗衣机与冰箱的智能触控屏界面，
+          展示设备状态管理、运行阶段、温度控制、告警 flag、节能状态和 C 语言状态机设计思路。
+        </p>
+        <div class="hero-actions" aria-label="页面快捷入口">
+          <a class="button primary" href="#devices">查看设备控制台</a>
+          <a class="button secondary" href="#logic">查看 C 语言逻辑</a>
+        </div>
+      </div>
+
+      <div class="hero-panel" aria-label="智能家电控制台预览">
+        <div class="panel-glass">
+          <div class="screen-toolbar">
+            <span>家庭设备中控</span>
+            <span class="soft-status"><span class="status-dot success"></span>在线</span>
+          </div>
+          <div class="hero-metrics">
+            <div class="metric-tile">
+              <span class="metric-icon water-icon" aria-hidden="true"></span>
+              <small>洗衣机</small>
+              <strong>洗涤中</strong>
+            </div>
+            <div class="metric-tile">
+              <span class="metric-icon frost-icon" aria-hidden="true"></span>
+              <small>冰箱</small>
+              <strong>4°C / -18°C</strong>
+            </div>
+          </div>
+          <div class="hero-device-row">
+            <div class="mini-screen">
+              <span>剩余时间</span>
+              <strong>28</strong>
+              <small>分钟</small>
+              <div class="mini-bar"><span></span></div>
+            </div>
+            <div class="mini-screen cool">
+              <span>节能状态</span>
+              <strong>92%</strong>
+              <small>运行良好</small>
+              <div class="mini-bars">
+                <i></i><i></i><i></i><i></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="overview" class="section overview-section" aria-labelledby="overview-title">
+      <div class="section-heading">
+        <p class="section-label">项目简介</p>
+        <h2 id="overview-title">用网页展示真实家电 HMI 的状态、控制与反馈逻辑。</h2>
+      </div>
+      <div class="overview-grid">
+        <article class="info-card">
+          <span class="card-icon water-icon" aria-hidden="true"></span>
+          <h3>洗衣机控制流程</h3>
+          <p>使用有限状态机模拟待机、洗涤、漂洗、脱水、完成等阶段，并展示剩余时间与进度反馈。</p>
+        </article>
+        <article class="info-card">
+          <span class="card-icon frost-icon" aria-hidden="true"></span>
+          <h3>冰箱温控与告警</h3>
+          <p>模拟冷藏室、冷冻室温度调节，门状态检测，高温提醒和节能状态可视化。</p>
+        </article>
+        <article class="info-card">
+          <span class="card-icon code-icon" aria-hidden="true"></span>
+          <h3>C 语言逻辑展示</h3>
+          <p>通过 enum、struct、bit flag 和 update 函数说明真实嵌入式项目中的控制逻辑组织方式。</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="devices" class="section devices-section" aria-labelledby="devices-title">
+      <div class="section-heading split">
+        <div>
+          <p class="section-label">设备控制区</p>
+          <h2 id="devices-title">双设备智能家电控制台</h2>
+        </div>
+        <p>
+          宽屏下两个设备并排展示，移动端自动上下堆叠。每张设备卡片内部保留嵌入式触控屏的分区、状态灯、按钮和运行反馈。
+        </p>
+      </div>
+
+      <div class="device-dashboard">
+        <article class="device-card washer-card" aria-labelledby="washer-title">
+          <div class="device-header">
+            <div>
+              <p class="device-kicker">洗衣机 HMI</p>
+              <h3 id="washer-title">洗衣机控制面板</h3>
+            </div>
+            <div class="status-pill" id="washerStatusChip">
+              <span class="status-dot"></span>
+              <span>待机</span>
+            </div>
+          </div>
+
+          <div class="appliance-screen">
+            <div class="screen-toolbar">
+              <span>嵌入式触控屏</span>
+              <span class="soft-status" id="washerRunLabel">待机状态</span>
+            </div>
+
+            <div class="washer-main">
+              <div class="progress-ring" id="washerProgressRing" aria-label="洗衣机进度">
+                <div class="ring-core">
+                  <span id="washerProgressLabel">0%</span>
+                  <small>进度</small>
+                </div>
+              </div>
+              <div class="washer-readout">
+                <span class="field-label">剩余时间</span>
+                <strong id="washerTime">28 分钟</strong>
+                <div class="state-line">
+                  <span id="washerRunLamp" class="status-dot"></span>
+                  <span id="washerState">待机</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="stage-track" aria-label="洗衣机运行阶段">
+              <span data-stage="洗涤中">洗涤</span>
+              <span data-stage="漂洗中">漂洗</span>
+              <span data-stage="脱水中">脱水</span>
+              <span data-stage="已完成">完成</span>
+            </div>
+
+            <div class="progress-track active-flow" aria-label="洗衣机线性进度">
+              <span id="washerProgressFill"></span>
+            </div>
+
+            <div class="control-group" aria-labelledby="washer-mode-label">
+              <div class="control-label" id="washer-mode-label">洗衣模式</div>
+              <div class="segmented" id="washerModeButtons">
+                <button type="button" data-washer-mode="快洗" class="active">快洗</button>
+                <button type="button" data-washer-mode="棉织物">棉织物</button>
+                <button type="button" data-washer-mode="轻柔洗">轻柔洗</button>
+                <button type="button" data-washer-mode="强力洗">强力洗</button>
+                <button type="button" data-washer-mode="节能模式">节能模式</button>
+              </div>
+            </div>
+
+            <div class="setting-grid">
+              <div class="control-group" aria-labelledby="washer-temp-label">
+                <div class="control-label" id="washer-temp-label">水温</div>
+                <div class="segmented compact" id="washerTempButtons">
+                  <button type="button" data-washer-temp="冷水" class="active">冷水</button>
+                  <button type="button" data-washer-temp="温水">温水</button>
+                  <button type="button" data-washer-temp="热水">热水</button>
+                </div>
+              </div>
+              <div class="control-group" aria-labelledby="washer-spin-label">
+                <div class="control-label" id="washer-spin-label">转速</div>
+                <div class="segmented compact" id="washerSpinButtons">
+                  <button type="button" data-washer-spin="低速">低速</button>
+                  <button type="button" data-washer-spin="中速" class="active">中速</button>
+                  <button type="button" data-washer-spin="高速">高速</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="action-row">
+              <button type="button" class="action primary" id="washerStart">开始</button>
+              <button type="button" class="action secondary" id="washerPause">暂停</button>
+              <button type="button" class="action ghost" id="washerReset">重置</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="device-card fridge-card" aria-labelledby="fridge-title">
+          <div class="device-header">
+            <div>
+              <p class="device-kicker">冰箱 HMI</p>
+              <h3 id="fridge-title">冰箱控制面板</h3>
+            </div>
+            <div class="status-pill success" id="fridgeEnergyChip">
+              <span class="status-dot success"></span>
+              <span>节能 82%</span>
+            </div>
+          </div>
+
+          <div class="appliance-screen">
+            <div class="screen-toolbar">
+              <span>智能温控屏</span>
+              <span class="soft-status" id="fridgeModeLabel">标准模式</span>
+            </div>
+
+            <div class="temperature-grid">
+              <div class="temperature-card">
+                <span class="field-label">冷藏室</span>
+                <strong id="fridgeTemp">4°C</strong>
+                <div class="stepper" aria-label="调节冷藏室温度">
+                  <button type="button" data-temp-target="fridge" data-temp-delta="-1">-</button>
+                  <button type="button" data-temp-target="fridge" data-temp-delta="1">+</button>
+                </div>
+              </div>
+              <div class="temperature-card freeze">
+                <span class="field-label">冷冻室</span>
+                <strong id="freezerTemp">-18°C</strong>
+                <div class="stepper" aria-label="调节冷冻室温度">
+                  <button type="button" data-temp-target="freezer" data-temp-delta="-1">-</button>
+                  <button type="button" data-temp-target="freezer" data-temp-delta="1">+</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="control-group" aria-labelledby="fridge-mode-label-text">
+              <div class="control-label" id="fridge-mode-label-text">当前模式</div>
+              <div class="segmented" id="fridgeModeButtons">
+                <button type="button" data-fridge-mode="标准模式" class="active">标准模式</button>
+                <button type="button" data-fridge-mode="节能模式">节能模式</button>
+                <button type="button" data-fridge-mode="假日模式">假日模式</button>
+                <button type="button" data-fridge-mode="速冻模式">速冻模式</button>
+              </div>
+            </div>
+
+            <div class="fridge-status-grid">
+              <div class="readout">
+                <span class="field-label">门状态</span>
+                <strong id="doorState">已关闭</strong>
+                <button type="button" class="mini-action" id="doorToggle">模拟开门</button>
+              </div>
+              <div class="readout warning-readout">
+                <span class="field-label">告警状态</span>
+                <strong id="warningState">正常</strong>
+                <span id="fridgeWarningLamp" class="warning-badge success">运行正常</span>
+                <p id="warningCopy">门状态与温度均处于安全范围。</p>
+              </div>
+            </div>
+
+            <div class="trend-panel">
+              <div class="trend-heading">
+                <span>温度可视化</span>
+                <span id="energySavingLabel">节能状态：均衡</span>
+              </div>
+              <div class="temp-bar">
+                <span>冷藏</span>
+                <div class="temp-track fridge-track"><span id="fridgeTempBar"></span></div>
+              </div>
+              <div class="temp-bar">
+                <span>冷冻</span>
+                <div class="temp-track freezer-track"><span id="freezerTempBar"></span></div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="highlights" class="section highlights-section" aria-labelledby="highlights-title">
+      <div class="section-heading">
+        <p class="section-label">技术亮点</p>
+        <h2 id="highlights-title">从图形界面到控制逻辑的完整展示。</h2>
+      </div>
+      <div class="highlight-grid">
+        <article class="info-card">
+          <h3>有限状态机</h3>
+          <p>洗衣机运行过程拆分为明确状态，支持开始、暂停、重置和完成反馈。</p>
+        </article>
+        <article class="info-card">
+          <h3>数据驱动 UI</h3>
+          <p>按钮、状态灯、进度环、温度条和告警标签都由 JavaScript model 统一渲染。</p>
+        </article>
+        <article class="info-card">
+          <h3>告警 flag 思维</h3>
+          <p>冰箱模块通过门状态和温度阈值生成开门提醒、高温提醒等设备告警。</p>
+        </article>
+        <article class="info-card">
+          <h3>静态部署友好</h3>
+          <p>不依赖框架、构建工具或 npm install，可直接打开 HTML，也适合 GitHub Pages 展示。</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="logic" class="section logic-section" aria-labelledby="logic-title">
+      <div class="section-heading split">
+        <div>
+          <p class="section-label">C 语言逻辑预览</p>
+          <h2 id="logic-title">用于面试讲解的嵌入式控制逻辑片段。</h2>
+        </div>
+        <p>
+          `appliance_logic.c` 是展示用 C 文件，不会被网页运行时调用。网页交互由 JavaScript 驱动，
+          C 文件用于说明真实家电项目中可如何组织状态机、结构体和告警 bit flag。
+        </p>
+      </div>
+
+      <div class="code-window" role="region" aria-label="C 语言逻辑预览">
+        <div class="code-titlebar">
+          <span>appliance_logic.c</span>
+          <span>enum / struct / update task / warning flag</span>
+        </div>
+        <pre><code>typedef enum {
+    WASHER_IDLE,
+    WASHER_WASHING,
+    WASHER_RINSING,
+    WASHER_SPINNING,
+    WASHER_FINISHED
+} WasherState;
+
+typedef struct {
+    WasherState state;
+    WashMode mode;
+    WaterTemperature temperature;
+    SpinSpeed spinSpeed;
+    uint16_t remainingTimeMinutes;
+    uint8_t progressPercent;
+    uint8_t isRunning;
+} WashingMachineConfig;
+
+void updateRefrigeratorStatus(RefrigeratorConfig *fridge)
+{
+    fridge-&gt;warningFlag = WARNING_NONE;
+
+    if (fridge-&gt;doorOpen) {
+        fridge-&gt;warningFlag |= WARNING_DOOR_OPEN;
+    }
+
+    if (fridge-&gt;fridgeTempC &gt;= 8 || fridge-&gt;freezerTempC &gt;= -12) {
+        fridge-&gt;warningFlag |= WARNING_HIGH_TEMP;
+    }
+}</code></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>智能家电图形界面演示项目 - HTML / CSS / JavaScript 交互实现，C 文件用于嵌入式逻辑展示。</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
