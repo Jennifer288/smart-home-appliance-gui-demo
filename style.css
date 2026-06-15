@@ -968,6 +968,25 @@ p {
   font-weight: 800;
 }
 
+.logic-code-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(226, 232, 240, 0.16);
+}
+
+.code-block {
+  min-width: 0;
+  background: #0F172A;
+}
+
+.code-block h3 {
+  margin: 0;
+  padding: 16px 20px 0;
+  color: #67E8F9;
+  font-size: 1rem;
+}
+
 pre {
   margin: 0;
   padding: 24px;
@@ -1073,6 +1092,7 @@ code {
   .setting-grid,
   .temperature-grid,
   .fridge-status-grid,
+  .logic-code-grid,
   .highlight-grid {
     grid-template-columns: 1fr;
   }

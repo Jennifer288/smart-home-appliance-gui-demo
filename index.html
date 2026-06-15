@@ -321,38 +321,95 @@
       <div class="code-window" role="region" aria-label="C 语言逻辑预览">
         <div class="code-titlebar">
           <span>appliance_logic.c</span>
-          <span>enum / struct / update task / warning flag</span>
+          <span>FSM / struct / periodic task / warning bit flag</span>
         </div>
-        <pre><code>typedef enum {
+        <div class="logic-code-grid">
+          <article class="code-block">
+            <h3>洗衣机状态机</h3>
+            <pre><code>typedef enum {
     WASHER_IDLE,
     WASHER_WASHING,
     WASHER_RINSING,
     WASHER_SPINNING,
+    WASHER_PAUSED,
     WASHER_FINISHED
 } WasherState;
 
 typedef struct {
     WasherState state;
-    WashMode mode;
+    WasherState previousState;
+    WasherMode mode;
     WaterTemperature temperature;
     SpinSpeed spinSpeed;
-    uint16_t remainingTimeMinutes;
+    uint16_t totalMinutes;
+    uint16_t remainingMinutes;
     uint8_t progressPercent;
-    uint8_t isRunning;
-} WashingMachineConfig;
+    bool isRunning;
+    bool isDoorLocked;
+} WashingMachine;
 
-void updateRefrigeratorStatus(RefrigeratorConfig *fridge)
+void updateWashingMachineState(WashingMachine *washer)
 {
-    fridge-&gt;warningFlag = WARNING_NONE;
-
-    if (fridge-&gt;doorOpen) {
-        fridge-&gt;warningFlag |= WARNING_DOOR_OPEN;
+    if (washer == 0 || !washer-&gt;isRunning) {
+        return;
     }
 
-    if (fridge-&gt;fridgeTempC &gt;= 8 || fridge-&gt;freezerTempC &gt;= -12) {
-        fridge-&gt;warningFlag |= WARNING_HIGH_TEMP;
+    washer-&gt;progressPercent++;
+
+    if (washer-&gt;progressPercent &lt; 45) {
+        setWasherState(washer, WASHER_WASHING);
+    } else if (washer-&gt;progressPercent &lt; 75) {
+        setWasherState(washer, WASHER_RINSING);
+    } else if (washer-&gt;progressPercent &lt; 100) {
+        setWasherState(washer, WASHER_SPINNING);
+    } else {
+        washer-&gt;isRunning = false;
+        washer-&gt;isDoorLocked = false;
+        setWasherState(washer, WASHER_FINISHED);
     }
 }</code></pre>
+          </article>
+
+          <article class="code-block">
+            <h3>冰箱告警逻辑</h3>
+            <pre><code>#define WARNING_DOOR_OPEN           0x01
+#define WARNING_FRIDGE_HIGH_TEMP    0x02
+#define WARNING_FREEZER_HIGH_TEMP   0x04
+
+typedef struct {
+    RefrigeratorMode mode;
+    int8_t fridgeTemp;
+    int8_t freezerTemp;
+    int8_t targetFridgeTemp;
+    int8_t targetFreezerTemp;
+    bool doorOpen;
+    uint8_t warningFlags;
+    CompressorLevel compressorLevel;
+    EnergyStatus energyStatus;
+} Refrigerator;
+
+void checkRefrigeratorWarnings(Refrigerator *fridge)
+{
+    if (fridge-&gt;doorOpen) {
+        fridge-&gt;warningFlags |= WARNING_DOOR_OPEN;
+    } else {
+        fridge-&gt;warningFlags &amp;= (uint8_t)~WARNING_DOOR_OPEN;
+    }
+
+    if (fridge-&gt;fridgeTemp &gt;= 8) {
+        fridge-&gt;warningFlags |= WARNING_FRIDGE_HIGH_TEMP;
+    } else {
+        fridge-&gt;warningFlags &amp;= (uint8_t)~WARNING_FRIDGE_HIGH_TEMP;
+    }
+
+    if (fridge-&gt;freezerTemp &gt;= -12) {
+        fridge-&gt;warningFlags |= WARNING_FREEZER_HIGH_TEMP;
+    } else {
+        fridge-&gt;warningFlags &amp;= (uint8_t)~WARNING_FREEZER_HIGH_TEMP;
+    }
+}</code></pre>
+          </article>
+        </div>
       </div>
     </section>
   </main>
