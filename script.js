@@ -30,6 +30,15 @@
     HIGH_TEMP: "高温提醒"
   };
 
+  const reducedMotionQuery =
+    typeof globalScope !== "undefined" && typeof globalScope.matchMedia === "function"
+      ? globalScope.matchMedia("(prefers-reduced-motion: reduce)")
+      : null;
+
+  function prefersReducedMotion() {
+    return Boolean(reducedMotionQuery && reducedMotionQuery.matches);
+  }
+
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
   }
@@ -252,9 +261,188 @@
     return clamp(((value - min) / (max - min)) * 100, 6, 100);
   }
 
+  function readDisplayedNumber(element, fallbackValue) {
+    if (!element) {
+      return fallbackValue;
+    }
+    const value = Number.parseInt(element.textContent.replace(/[^\d-]/g, ""), 10);
+    return Number.isFinite(value) ? value : fallbackValue;
+  }
+
+  function countUp(element, toValue, options = {}) {
+    if (!element) {
+      return;
+    }
+
+    const suffix = options.suffix || "";
+    const duration = Math.min(options.duration || 420, 820);
+    const target = Math.round(toValue);
+    const currentTarget = Number(element.dataset.countTarget);
+
+    if (currentTarget === target && !element._countFrame) {
+      element.textContent = `${target}${suffix}`;
+      element._countValue = target;
+      return;
+    }
+
+    if (element._countFrame) {
+      globalScope.cancelAnimationFrame(element._countFrame);
+      element._countFrame = null;
+    }
+
+    if (prefersReducedMotion() || typeof globalScope.requestAnimationFrame !== "function") {
+      element.textContent = `${target}${suffix}`;
+      element.dataset.countTarget = String(target);
+      element._countValue = target;
+      return;
+    }
+
+    const fromValue = Number.isFinite(element._countValue)
+      ? element._countValue
+      : readDisplayedNumber(element, target);
+    const startTime = globalScope.performance.now();
+
+    element.dataset.countTarget = String(target);
+
+    function step(now) {
+      const elapsed = now - startTime;
+      const ratio = clamp(elapsed / duration, 0, 1);
+      const eased = 1 - Math.pow(1 - ratio, 3);
+      const nextValue = Math.round(fromValue + (target - fromValue) * eased);
+
+      element._countValue = nextValue;
+      element.textContent = `${nextValue}${suffix}`;
+
+      if (ratio < 1) {
+        element._countFrame = globalScope.requestAnimationFrame(step);
+      } else {
+        element._countFrame = null;
+        element._countValue = target;
+        element.textContent = `${target}${suffix}`;
+      }
+    }
+
+    element._countFrame = globalScope.requestAnimationFrame(step);
+  }
+
+  function triggerOnce(element, className) {
+    if (!element || prefersReducedMotion()) {
+      return;
+    }
+
+    element.classList.remove(className);
+    void element.offsetWidth;
+    element.classList.add(className);
+    window.setTimeout(() => {
+      element.classList.remove(className);
+    }, 850);
+  }
+
+  function showToast(message, type = "info") {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const region = document.getElementById("toastRegion");
+    if (!region) {
+      return;
+    }
+
+    const toast = document.createElement("div");
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    region.appendChild(toast);
+
+    const show = () => toast.classList.add("show");
+    if (typeof globalScope.requestAnimationFrame === "function") {
+      globalScope.requestAnimationFrame(show);
+    } else {
+      show();
+    }
+
+    const removeDelay = prefersReducedMotion() ? 2200 : 2600;
+    window.setTimeout(() => {
+      toast.classList.add("removing");
+      window.setTimeout(() => {
+        toast.remove();
+      }, prefersReducedMotion() ? 20 : 240);
+    }, removeDelay);
+  }
+
+  function addRipple(event) {
+    const target = event.currentTarget;
+    if (!target || prefersReducedMotion()) {
+      return;
+    }
+
+    const rect = target.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const ripple = document.createElement("span");
+    const x = event.clientX - rect.left - size / 2;
+    const y = event.clientY - rect.top - size / 2;
+
+    ripple.className = "ripple";
+    ripple.style.width = `${size}px`;
+    ripple.style.height = `${size}px`;
+    ripple.style.left = `${x}px`;
+    ripple.style.top = `${y}px`;
+
+    target.appendChild(ripple);
+    ripple.addEventListener("animationend", () => ripple.remove(), { once: true });
+  }
+
+  function initRipples() {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    document
+      .querySelectorAll(".action, .mini-action, .stepper button, .button, .segmented button")
+      .forEach((element) => {
+        element.addEventListener("click", addRipple);
+      });
+  }
+
+  function initScrollReveal() {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const revealItems = Array.from(document.querySelectorAll(".section, .info-card, .device-card, .code-block"));
+
+    if (prefersReducedMotion() || typeof IntersectionObserver === "undefined") {
+      revealItems.forEach((element) => element.classList.add("is-visible"));
+      return;
+    }
+
+    revealItems.forEach((element, index) => {
+      element.classList.add("reveal-ready");
+      element.style.setProperty("--reveal-delay", `${(index % 4) * 70}ms`);
+    });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) {
+            return;
+          }
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        });
+      },
+      {
+        threshold: 0.12,
+        rootMargin: "0px 0px -8% 0px"
+      }
+    );
+
+    revealItems.forEach((element) => observer.observe(element));
+  }
+
   function initWasherUI() {
     const washer = createWashingMachineModel();
     const elements = {
+      card: document.querySelector(".washer-card"),
       statusChip: document.getElementById("washerStatusChip"),
       state: document.getElementById("washerState"),
       time: document.getElementById("washerTime"),
@@ -272,13 +460,29 @@
       pause: document.getElementById("washerPause"),
       reset: document.getElementById("washerReset")
     };
+    let previousWasherStatus = washer.state.status;
 
     function render() {
       const state = washer.state;
       const progressDegree = Math.round(state.progress * 3.6);
+      const stageOrder = [
+        WASHER_STATUS.WASHING,
+        WASHER_STATUS.RINSING,
+        WASHER_STATUS.SPINNING,
+        WASHER_STATUS.FINISHED
+      ];
+      const currentStageIndex = stageOrder.indexOf(state.status);
+      const enteredWashing =
+        previousWasherStatus !== WASHER_STATUS.WASHING &&
+        state.status === WASHER_STATUS.WASHING &&
+        state.isRunning;
+      const enteredFinished =
+        previousWasherStatus !== WASHER_STATUS.FINISHED &&
+        state.status === WASHER_STATUS.FINISHED;
+
       elements.state.textContent = state.status;
-      elements.time.textContent = `${state.remainingTime} 分钟`;
-      elements.progressLabel.textContent = `${Math.round(state.progress)}%`;
+      countUp(elements.time, state.remainingTime, { suffix: " 分钟", duration: 420 });
+      countUp(elements.progressLabel, state.progress, { suffix: "%", duration: 420 });
       elements.progressFill.style.width = `${state.progress}%`;
       elements.progressRing.style.setProperty("--progress", `${progressDegree}deg`);
       elements.progressRing.classList.toggle("running", state.isRunning);
@@ -292,12 +496,27 @@
       elements.runLamp.className = `status-dot ${state.isRunning ? "running" : state.status === WASHER_STATUS.FINISHED ? "success" : ""}`;
 
       elements.stages.forEach((stage) => {
+        const stageIndex = stageOrder.indexOf(stage.dataset.stage);
+        const isFinishedCycle = state.status === WASHER_STATUS.FINISHED;
         stage.classList.toggle("active", stage.dataset.stage === state.status);
+        stage.classList.toggle("completed", isFinishedCycle || (stageIndex >= 0 && stageIndex < currentStageIndex));
       });
 
       setActiveButton(elements.modeButtons, "button", state.mode, "data-washer-mode");
       setActiveButton(elements.tempButtons, "button", state.temperature, "data-washer-temp");
       setActiveButton(elements.spinButtons, "button", state.spinSpeed, "data-washer-spin");
+
+      if (enteredWashing) {
+        showToast("开始洗涤", "info");
+      }
+
+      if (enteredFinished) {
+        triggerOnce(elements.progressRing, "complete-pulse");
+        triggerOnce(elements.card, "complete-pulse");
+        showToast("洗衣完成", "success");
+      }
+
+      previousWasherStatus = state.status;
     }
 
     elements.modeButtons.addEventListener("click", (event) => {
@@ -362,17 +581,23 @@
       doorToggle: document.getElementById("doorToggle"),
       modeButtons: document.getElementById("fridgeModeButtons"),
       warningLamp: document.getElementById("fridgeWarningLamp"),
+      warningReadout: document.querySelector(".warning-readout"),
       modeLabel: document.getElementById("fridgeModeLabel"),
       energyChip: document.getElementById("fridgeEnergyChip"),
       energySavingLabel: document.getElementById("energySavingLabel"),
       fridgeBar: document.getElementById("fridgeTempBar"),
       freezerBar: document.getElementById("freezerTempBar")
     };
+    let previousWarningFlag = refrigerator.state.warningFlag;
 
     function render() {
       const state = refrigerator.state;
-      elements.fridgeTemp.innerHTML = `${state.fridgeTemp}&deg;C`;
-      elements.freezerTemp.innerHTML = `${state.freezerTemp}&deg;C`;
+      const enteredWarning =
+        previousWarningFlag === WARNING_FLAGS.NORMAL &&
+        state.warningFlag !== WARNING_FLAGS.NORMAL;
+
+      countUp(elements.fridgeTemp, state.fridgeTemp, { suffix: "°C", duration: 380 });
+      countUp(elements.freezerTemp, state.freezerTemp, { suffix: "°C", duration: 380 });
       elements.doorState.textContent = state.doorOpen ? "已开门" : "已关闭";
       elements.warningState.textContent = state.warningFlag;
       elements.doorToggle.textContent = state.doorOpen ? "模拟关门" : "模拟开门";
@@ -404,6 +629,14 @@
       }
 
       setActiveButton(elements.modeButtons, "button", state.mode, "data-fridge-mode");
+
+      if (enteredWarning) {
+        triggerOnce(elements.warningLamp, "shake");
+        triggerOnce(elements.warningReadout, "shake");
+        showToast(state.warningFlag === WARNING_FLAGS.DOOR_OPEN ? "出现开门提醒" : "出现高温提醒", "warning");
+      }
+
+      previousWarningFlag = state.warningFlag;
     }
 
     document.querySelectorAll("[data-temp-target]").forEach((button) => {
@@ -438,6 +671,8 @@
   function initApp() {
     initWasherUI();
     initRefrigeratorUI();
+    initRipples();
+    initScrollReveal();
   }
 
   if (typeof module !== "undefined" && module.exports) {
