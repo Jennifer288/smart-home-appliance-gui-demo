@@ -315,6 +315,7 @@
         <p>
           `appliance_logic.c` 是展示用 C 文件，不会被网页运行时调用。网页交互由 JavaScript 驱动，
           C 文件用于说明真实家电项目中可如何组织状态机、结构体和告警 bit flag。
+          当设备状态变化时，下方 C 语言片段会同步高亮对应的状态机分支，用于展示 GUI 与底层控制逻辑的映射关系。
         </p>
       </div>
 
@@ -327,12 +328,12 @@
           <article class="code-block">
             <h3>洗衣机状态机</h3>
             <pre><code>typedef enum {
-    WASHER_IDLE,
-    WASHER_WASHING,
-    WASHER_RINSING,
-    WASHER_SPINNING,
+<span class="logic-line" data-logic-key="washer-idle">    WASHER_IDLE,</span>
+<span class="logic-line" data-logic-key="washer-washing">    WASHER_WASHING,</span>
+<span class="logic-line" data-logic-key="washer-rinsing">    WASHER_RINSING,</span>
+<span class="logic-line" data-logic-key="washer-spinning">    WASHER_SPINNING,</span>
     WASHER_PAUSED,
-    WASHER_FINISHED,
+<span class="logic-line" data-logic-key="washer-finished">    WASHER_FINISHED,</span>
     WASHER_ERROR
 } WasherState;
 
@@ -445,18 +446,18 @@ void updateWashingMachineState(WashingMachine *washer)
     washer-&gt;remainingMinutes =
         washer-&gt;totalMinutes * (100 - washer-&gt;progressPercent) / 100;
 
-    if (washer-&gt;progressPercent &lt; 45) {
+<span class="logic-line" data-logic-key="washer-branch-washing">    if (washer-&gt;progressPercent &lt; 45) {</span>
         setWasherState(washer, WASHER_WASHING);
-    } else if (washer-&gt;progressPercent &lt; 75) {
+<span class="logic-line" data-logic-key="washer-branch-rinsing">    } else if (washer-&gt;progressPercent &lt; 75) {</span>
         setWasherState(washer, WASHER_RINSING);
-    } else if (washer-&gt;progressPercent &lt; 100) {
+<span class="logic-line" data-logic-key="washer-branch-spinning">    } else if (washer-&gt;progressPercent &lt; 100) {</span>
         setWasherState(washer, WASHER_SPINNING);
-    } else {
+<span class="logic-line" data-logic-key="washer-branch-finished">    } else {</span>
         washer-&gt;progressPercent = 100;
         washer-&gt;remainingMinutes = 0;
         washer-&gt;isRunning = false;
         washer-&gt;isDoorLocked = false;
-        setWasherState(washer, WASHER_FINISHED);
+<span class="logic-line" data-logic-key="washer-branch-finished">        setWasherState(washer, WASHER_FINISHED);</span>
     }
 }</code></pre>
           </article>
@@ -466,10 +467,10 @@ void updateWashingMachineState(WashingMachine *washer)
             <pre><code>#define FRIDGE_HIGH_TEMP_LIMIT      8
 #define FREEZER_HIGH_TEMP_LIMIT    -12
 
-#define WARNING_NONE                0x00
-#define WARNING_DOOR_OPEN           0x01
-#define WARNING_FRIDGE_HIGH_TEMP    0x02
-#define WARNING_FREEZER_HIGH_TEMP   0x04
+<span class="logic-line" data-logic-key="warning-none">#define WARNING_NONE                0x00</span>
+<span class="logic-line" data-logic-key="warning-door-open">#define WARNING_DOOR_OPEN           0x01</span>
+<span class="logic-line" data-logic-key="warning-fridge-high">#define WARNING_FRIDGE_HIGH_TEMP    0x02</span>
+<span class="logic-line" data-logic-key="warning-freezer-high">#define WARNING_FREEZER_HIGH_TEMP   0x04</span>
 
 typedef struct {
     RefrigeratorMode mode;
@@ -489,20 +490,20 @@ void checkRefrigeratorWarnings(Refrigerator *fridge)
         return;
     }
 
-    if (fridge-&gt;doorOpen) {
-        fridge-&gt;warningFlags |= WARNING_DOOR_OPEN;
+<span class="logic-line" data-logic-key="warning-door-branch">    if (fridge-&gt;doorOpen) {</span>
+<span class="logic-line" data-logic-key="warning-door-open">        fridge-&gt;warningFlags |= WARNING_DOOR_OPEN;</span>
     } else {
         fridge-&gt;warningFlags &amp;= (uint8_t)~WARNING_DOOR_OPEN;
     }
 
-    if (fridge-&gt;fridgeTemp &gt;= FRIDGE_HIGH_TEMP_LIMIT) {
-        fridge-&gt;warningFlags |= WARNING_FRIDGE_HIGH_TEMP;
+<span class="logic-line" data-logic-key="warning-high-temp-branch">    if (fridge-&gt;fridgeTemp &gt;= FRIDGE_HIGH_TEMP_LIMIT) {</span>
+<span class="logic-line" data-logic-key="warning-fridge-high">        fridge-&gt;warningFlags |= WARNING_FRIDGE_HIGH_TEMP;</span>
     } else {
         fridge-&gt;warningFlags &amp;= (uint8_t)~WARNING_FRIDGE_HIGH_TEMP;
     }
 
-    if (fridge-&gt;freezerTemp &gt;= FREEZER_HIGH_TEMP_LIMIT) {
-        fridge-&gt;warningFlags |= WARNING_FREEZER_HIGH_TEMP;
+<span class="logic-line" data-logic-key="warning-high-temp-branch">    if (fridge-&gt;freezerTemp &gt;= FREEZER_HIGH_TEMP_LIMIT) {</span>
+<span class="logic-line" data-logic-key="warning-freezer-high">        fridge-&gt;warningFlags |= WARNING_FREEZER_HIGH_TEMP;</span>
     } else {
         fridge-&gt;warningFlags &amp;= (uint8_t)~WARNING_FREEZER_HIGH_TEMP;
     }

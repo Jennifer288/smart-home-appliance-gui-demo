@@ -30,6 +30,23 @@
     HIGH_TEMP: "高温提醒"
   };
 
+  const WASHER_LOGIC_MAP = {
+    [WASHER_STATUS.IDLE]: ["washer-idle"],
+    [WASHER_STATUS.WASHING]: ["washer-washing", "washer-branch-washing"],
+    [WASHER_STATUS.RINSING]: ["washer-rinsing", "washer-branch-rinsing"],
+    [WASHER_STATUS.SPINNING]: ["washer-spinning", "washer-branch-spinning"],
+    [WASHER_STATUS.FINISHED]: ["washer-finished", "washer-branch-finished"]
+  };
+
+  const FRIDGE_LOGIC_MAP = {
+    [WARNING_FLAGS.NORMAL]: ["warning-none"],
+    [WARNING_FLAGS.DOOR_OPEN]: ["warning-door-open", "warning-door-branch"],
+    [WARNING_FLAGS.HIGH_TEMP]: ["warning-fridge-high", "warning-freezer-high", "warning-high-temp-branch"]
+  };
+
+  const WASHER_LOGIC_PREFIXES = ["washer-"];
+  const FRIDGE_LOGIC_PREFIXES = ["warning-", "fridge-"];
+
   const reducedMotionQuery =
     typeof globalScope !== "undefined" && typeof globalScope.matchMedia === "function"
       ? globalScope.matchMedia("(prefers-reduced-motion: reduce)")
@@ -439,6 +456,49 @@
     revealItems.forEach((element) => observer.observe(element));
   }
 
+  function clearLogicHighlights(prefixes) {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const selector = prefixes
+      .map((prefix) => `[data-logic-key^="${prefix}"].is-active`)
+      .join(",");
+
+    document.querySelectorAll(selector).forEach((line) => {
+      line.classList.remove("is-active", "warning", "success");
+    });
+  }
+
+  function activateLogicKeys(keys, options = {}) {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    keys.forEach((key) => {
+      document.querySelectorAll(`[data-logic-key="${key}"]`).forEach((line) => {
+        line.classList.add("is-active");
+        if (options.type) {
+          line.classList.add(options.type);
+        }
+      });
+    });
+  }
+
+  function syncWasherLogicHighlight(status) {
+    clearLogicHighlights(WASHER_LOGIC_PREFIXES);
+    activateLogicKeys(WASHER_LOGIC_MAP[status] || [], {
+      type: status === WASHER_STATUS.FINISHED ? "success" : ""
+    });
+  }
+
+  function syncFridgeLogicHighlight(warningFlag) {
+    clearLogicHighlights(FRIDGE_LOGIC_PREFIXES);
+    activateLogicKeys(FRIDGE_LOGIC_MAP[warningFlag] || [], {
+      type: warningFlag === WARNING_FLAGS.NORMAL ? "success" : "warning"
+    });
+  }
+
   function updateSegmentPill(segmented) {
     if (!segmented) {
       return;
@@ -560,6 +620,7 @@
       setActiveButton(elements.tempButtons, "button", state.temperature, "data-washer-temp");
       setActiveButton(elements.spinButtons, "button", state.spinSpeed, "data-washer-spin");
       updateSegmentPills();
+      syncWasherLogicHighlight(state.status);
 
       if (enteredWashing) {
         showToast("开始洗涤", "info");
@@ -685,6 +746,7 @@
 
       setActiveButton(elements.modeButtons, "button", state.mode, "data-fridge-mode");
       updateSegmentPills();
+      syncFridgeLogicHighlight(state.warningFlag);
 
       if (enteredWarning) {
         triggerOnce(elements.warningLamp, "shake");
