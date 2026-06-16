@@ -439,6 +439,60 @@
     revealItems.forEach((element) => observer.observe(element));
   }
 
+  function updateSegmentPill(segmented) {
+    if (!segmented) {
+      return;
+    }
+
+    let pill = segmented.querySelector(".segment-pill");
+    if (!pill) {
+      pill = document.createElement("span");
+      pill.className = "segment-pill";
+      pill.setAttribute("aria-hidden", "true");
+      segmented.prepend(pill);
+    }
+    segmented.classList.add("has-pill");
+
+    const active = segmented.querySelector("button.active");
+    if (!active) {
+      pill.classList.remove("is-ready");
+      return;
+    }
+
+    pill.style.width = `${active.offsetWidth}px`;
+    pill.style.height = `${active.offsetHeight}px`;
+    pill.style.transform = `translate(${active.offsetLeft}px, ${active.offsetTop}px)`;
+    pill.classList.add("is-ready");
+  }
+
+  function updateSegmentPills() {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    document.querySelectorAll(".segmented").forEach(updateSegmentPill);
+  }
+
+  function setupSegmentPills() {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    let resizeFrame = null;
+    updateSegmentPills();
+
+    window.addEventListener("resize", () => {
+      if (resizeFrame) {
+        globalScope.cancelAnimationFrame(resizeFrame);
+      }
+
+      resizeFrame = globalScope.requestAnimationFrame(() => {
+        resizeFrame = null;
+        updateSegmentPills();
+      });
+    });
+  }
+
   function initWasherUI() {
     const washer = createWashingMachineModel();
     const elements = {
@@ -505,6 +559,7 @@
       setActiveButton(elements.modeButtons, "button", state.mode, "data-washer-mode");
       setActiveButton(elements.tempButtons, "button", state.temperature, "data-washer-temp");
       setActiveButton(elements.spinButtons, "button", state.spinSpeed, "data-washer-spin");
+      updateSegmentPills();
 
       if (enteredWashing) {
         showToast("开始洗涤", "info");
@@ -629,6 +684,7 @@
       }
 
       setActiveButton(elements.modeButtons, "button", state.mode, "data-fridge-mode");
+      updateSegmentPills();
 
       if (enteredWarning) {
         triggerOnce(elements.warningLamp, "shake");
@@ -673,6 +729,7 @@
     initRefrigeratorUI();
     initRipples();
     initScrollReveal();
+    setupSegmentPills();
   }
 
   if (typeof module !== "undefined" && module.exports) {
