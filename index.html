@@ -324,11 +324,14 @@
           <span>appliance_logic.c</span>
           <span>FSM / struct / periodic task / warning bit flag</span>
         </div>
+        <div class="logic-status" id="logicHighlightStatus" aria-live="polite">
+          当前高亮：洗衣机待机 / 冰箱正常
+        </div>
         <div class="logic-code-grid">
           <article class="code-block">
             <h3>洗衣机状态机</h3>
             <pre><code>typedef enum {
-<span class="logic-line" data-logic-key="washer-idle">    WASHER_IDLE,</span>
+<span class="logic-line is-active" data-logic-key="washer-idle">    WASHER_IDLE,</span>
 <span class="logic-line" data-logic-key="washer-washing">    WASHER_WASHING,</span>
 <span class="logic-line" data-logic-key="washer-rinsing">    WASHER_RINSING,</span>
 <span class="logic-line" data-logic-key="washer-spinning">    WASHER_SPINNING,</span>
@@ -467,7 +470,7 @@ void updateWashingMachineState(WashingMachine *washer)
             <pre><code>#define FRIDGE_HIGH_TEMP_LIMIT      8
 #define FREEZER_HIGH_TEMP_LIMIT    -12
 
-<span class="logic-line" data-logic-key="warning-none">#define WARNING_NONE                0x00</span>
+<span class="logic-line is-active success" data-logic-key="warning-none">#define WARNING_NONE                0x00</span>
 <span class="logic-line" data-logic-key="warning-door-open">#define WARNING_DOOR_OPEN           0x01</span>
 <span class="logic-line" data-logic-key="warning-fridge-high">#define WARNING_FRIDGE_HIGH_TEMP    0x02</span>
 <span class="logic-line" data-logic-key="warning-freezer-high">#define WARNING_FREEZER_HIGH_TEMP   0x04</span>

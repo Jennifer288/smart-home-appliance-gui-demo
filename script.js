@@ -46,6 +46,8 @@
 
   const WASHER_LOGIC_PREFIXES = ["washer-"];
   const FRIDGE_LOGIC_PREFIXES = ["warning-", "fridge-"];
+  let currentLogicWasherStatus = WASHER_STATUS.IDLE;
+  let currentLogicFridgeWarning = WARNING_FLAGS.NORMAL;
 
   const reducedMotionQuery =
     typeof globalScope !== "undefined" && typeof globalScope.matchMedia === "function"
@@ -465,6 +467,10 @@
       .map((prefix) => `[data-logic-key^="${prefix}"].is-active`)
       .join(",");
 
+    if (!selector) {
+      return;
+    }
+
     document.querySelectorAll(selector).forEach((line) => {
       line.classList.remove("is-active", "warning", "success");
     });
@@ -485,18 +491,50 @@
     });
   }
 
+  function updateLogicHighlightStatus() {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const status = document.getElementById("logicHighlightStatus");
+    if (!status) {
+      return;
+    }
+
+    status.textContent = `当前高亮：洗衣机${currentLogicWasherStatus} / 冰箱${currentLogicFridgeWarning}`;
+  }
+
+  function logLogicHighlight(status, keys) {
+    if (typeof console !== "undefined" && typeof console.debug === "function") {
+      console.debug("[logic-highlight]", status, keys.join(", "));
+    }
+  }
+
   function syncWasherLogicHighlight(status) {
+    const keys = WASHER_LOGIC_MAP[status] || [];
+    currentLogicWasherStatus = status;
     clearLogicHighlights(WASHER_LOGIC_PREFIXES);
-    activateLogicKeys(WASHER_LOGIC_MAP[status] || [], {
+    activateLogicKeys(keys, {
       type: status === WASHER_STATUS.FINISHED ? "success" : ""
     });
+    updateLogicHighlightStatus();
+    logLogicHighlight(status, keys);
   }
 
   function syncFridgeLogicHighlight(warningFlag) {
+    const keys = FRIDGE_LOGIC_MAP[warningFlag] || [];
+    currentLogicFridgeWarning = warningFlag;
     clearLogicHighlights(FRIDGE_LOGIC_PREFIXES);
-    activateLogicKeys(FRIDGE_LOGIC_MAP[warningFlag] || [], {
+    activateLogicKeys(keys, {
       type: warningFlag === WARNING_FLAGS.NORMAL ? "success" : "warning"
     });
+    updateLogicHighlightStatus();
+    logLogicHighlight(warningFlag, keys);
+  }
+
+  function syncInitialLogicHighlights() {
+    syncWasherLogicHighlight(WASHER_STATUS.IDLE);
+    syncFridgeLogicHighlight(WARNING_FLAGS.NORMAL);
   }
 
   function updateSegmentPill(segmented) {
@@ -792,6 +830,7 @@
     initRipples();
     initScrollReveal();
     setupSegmentPills();
+    syncInitialLogicHighlights();
   }
 
   if (typeof module !== "undefined" && module.exports) {
