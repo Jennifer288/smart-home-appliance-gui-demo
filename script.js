@@ -46,8 +46,23 @@
 
   const WASHER_LOGIC_PREFIXES = ["washer-"];
   const FRIDGE_LOGIC_PREFIXES = ["warning-", "fridge-"];
+  const TELEMETRY_FILTERS = {
+    ALL: "all",
+    WASHER: "washer",
+    FRIDGE: "fridge",
+    WARNING: "warning"
+  };
+  const telemetryEvents = [];
+  const telemetrySnapshot = {
+    washerProgress: 0,
+    washerTime: WASH_DURATIONS["快洗"],
+    energyScore: 82,
+    warningFlag: WARNING_FLAGS.NORMAL
+  };
   let currentLogicWasherStatus = WASHER_STATUS.IDLE;
   let currentLogicFridgeWarning = WARNING_FLAGS.NORMAL;
+  let telemetryFilter = TELEMETRY_FILTERS.ALL;
+  let telemetryEventId = 0;
 
   const reducedMotionQuery =
     typeof globalScope !== "undefined" && typeof globalScope.matchMedia === "function"
@@ -280,6 +295,185 @@
     return clamp(((value - min) / (max - min)) * 100, 6, 100);
   }
 
+  function formatLogTime(date = new Date()) {
+    return date.toLocaleTimeString("zh-CN", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+  }
+
+  function getTelemetryElements() {
+    if (typeof document === "undefined") {
+      return {};
+    }
+
+    return {
+      list: document.getElementById("telemetryList"),
+      filterButtons: document.getElementById("telemetryFilterButtons"),
+      washerProgress: document.getElementById("telemetryWasherProgress"),
+      washerTime: document.getElementById("telemetryWasherTime"),
+      energyScore: document.getElementById("telemetryEnergyScore"),
+      warningStatus: document.getElementById("telemetryWarningStatus"),
+      eventCount: document.getElementById("telemetryEventCount")
+    };
+  }
+
+  function matchesTelemetryFilter(event) {
+    if (telemetryFilter === TELEMETRY_FILTERS.ALL) {
+      return true;
+    }
+    if (telemetryFilter === TELEMETRY_FILTERS.WASHER) {
+      return event.device === "洗衣机";
+    }
+    if (telemetryFilter === TELEMETRY_FILTERS.FRIDGE) {
+      return event.device === "冰箱";
+    }
+    if (telemetryFilter === TELEMETRY_FILTERS.WARNING) {
+      return event.level === "warning" || event.type === "告警";
+    }
+    return true;
+  }
+
+  function getTelemetryLevelText(level) {
+    if (level === "success") {
+      return "完成";
+    }
+    if (level === "warning") {
+      return "告警";
+    }
+    if (level === "system") {
+      return "系统";
+    }
+    return "信息";
+  }
+
+  function renderTelemetry() {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const elements = getTelemetryElements();
+    if (!elements.list) {
+      return;
+    }
+
+    const filteredEvents = telemetryEvents.filter(matchesTelemetryFilter);
+    elements.list.replaceChildren();
+
+    if (filteredEvents.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "telemetry-empty";
+      empty.textContent = telemetryEvents.length === 0
+        ? "暂无事件，操作设备后会自动记录运行日志。"
+        : "当前筛选条件下暂无事件。";
+      elements.list.appendChild(empty);
+    } else {
+      const fragment = document.createDocumentFragment();
+      filteredEvents.forEach((event) => {
+        const item = document.createElement("article");
+        item.className = `telemetry-item telemetry-level-${event.level}`;
+
+        const time = document.createElement("span");
+        time.className = "telemetry-time";
+        time.textContent = event.time;
+
+        const device = document.createElement("span");
+        device.className = "telemetry-device";
+        device.textContent = event.device;
+
+        const type = document.createElement("span");
+        type.className = "telemetry-type";
+        type.textContent = event.type;
+
+        const message = document.createElement("span");
+        message.className = "telemetry-message";
+        message.textContent = event.message;
+
+        const level = document.createElement("span");
+        level.className = "telemetry-level";
+        level.textContent = getTelemetryLevelText(event.level);
+
+        item.append(time, device, type, message, level);
+        fragment.appendChild(item);
+      });
+      elements.list.appendChild(fragment);
+    }
+
+    if (elements.eventCount) {
+      elements.eventCount.textContent = String(telemetryEvents.length);
+    }
+  }
+
+  function updateTelemetryMetrics(metrics = {}) {
+    Object.assign(telemetrySnapshot, metrics);
+
+    const elements = getTelemetryElements();
+    if (elements.washerProgress) {
+      elements.washerProgress.textContent = `${Math.round(telemetrySnapshot.washerProgress)}%`;
+    }
+    if (elements.washerTime) {
+      elements.washerTime.textContent = `${Math.round(telemetrySnapshot.washerTime)} 分钟`;
+    }
+    if (elements.energyScore) {
+      elements.energyScore.textContent = `${Math.round(telemetrySnapshot.energyScore)}%`;
+    }
+    if (elements.warningStatus) {
+      elements.warningStatus.textContent = telemetrySnapshot.warningFlag;
+      elements.warningStatus.classList.toggle("warning", telemetrySnapshot.warningFlag !== WARNING_FLAGS.NORMAL);
+    }
+    if (elements.eventCount) {
+      elements.eventCount.textContent = String(telemetryEvents.length);
+    }
+  }
+
+  function addTelemetryEvent(device, type, message, level = "info") {
+    telemetryEvents.unshift({
+      id: `${Date.now()}-${telemetryEventId++}`,
+      time: formatLogTime(),
+      device,
+      type,
+      message,
+      level
+    });
+
+    if (telemetryEvents.length > 30) {
+      telemetryEvents.length = 30;
+    }
+
+    renderTelemetry();
+    updateTelemetryMetrics();
+  }
+
+  function setTelemetryFilter(filter) {
+    telemetryFilter = filter;
+    const elements = getTelemetryElements();
+    if (elements.filterButtons) {
+      setActiveButton(elements.filterButtons, "button", telemetryFilter, "data-telemetry-filter");
+    }
+    renderTelemetry();
+    updateSegmentPills();
+  }
+
+  function initTelemetryUI() {
+    const elements = getTelemetryElements();
+    if (!elements.filterButtons) {
+      return;
+    }
+
+    elements.filterButtons.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-telemetry-filter]");
+      if (!button) {
+        return;
+      }
+      setTelemetryFilter(button.dataset.telemetryFilter);
+    });
+
+    updateTelemetryMetrics();
+    renderTelemetry();
+  }
+
   function readDisplayedNumber(element, fallbackValue) {
     if (!element) {
       return fallbackValue;
@@ -427,7 +621,7 @@
       return;
     }
 
-    const revealItems = Array.from(document.querySelectorAll(".section, .info-card, .device-card, .code-block"));
+    const revealItems = Array.from(document.querySelectorAll(".section, .info-card, .device-card, .telemetry-metric, .telemetry-panel, .code-block"));
 
     if (prefersReducedMotion() || typeof IntersectionObserver === "undefined") {
       revealItems.forEach((element) => element.classList.add("is-visible"));
@@ -659,6 +853,10 @@
       setActiveButton(elements.spinButtons, "button", state.spinSpeed, "data-washer-spin");
       updateSegmentPills();
       syncWasherLogicHighlight(state.status);
+      updateTelemetryMetrics({
+        washerProgress: state.progress,
+        washerTime: state.remainingTime
+      });
 
       if (enteredWashing) {
         showToast("开始洗涤", "info");
@@ -668,6 +866,15 @@
         triggerOnce(elements.progressRing, "complete-pulse");
         triggerOnce(elements.card, "complete-pulse");
         showToast("洗衣完成", "success");
+      }
+
+      if (previousWasherStatus !== state.status && state.status !== WASHER_STATUS.IDLE) {
+        addTelemetryEvent(
+          "洗衣机",
+          state.status === WASHER_STATUS.FINISHED ? "完成" : "阶段变化",
+          state.status === WASHER_STATUS.FINISHED ? "洗衣流程已完成" : `进入${state.status}`,
+          state.status === WASHER_STATUS.FINISHED ? "success" : "info"
+        );
       }
 
       previousWasherStatus = state.status;
@@ -701,17 +908,26 @@
     });
 
     elements.start.addEventListener("click", () => {
+      const shouldLogStart = !washer.state.isRunning || washer.state.status === WASHER_STATUS.FINISHED;
       washer.start();
+      if (shouldLogStart && washer.state.isRunning) {
+        addTelemetryEvent("洗衣机", "启动", `${washer.state.mode}模式开始运行`, "info");
+      }
       render();
     });
 
     elements.pause.addEventListener("click", () => {
+      const wasRunning = washer.state.isRunning && washer.state.status !== WASHER_STATUS.FINISHED;
       washer.pause();
+      if (wasRunning) {
+        addTelemetryEvent("洗衣机", "暂停", "洗衣机运行已暂停", "system");
+      }
       render();
     });
 
     elements.reset.addEventListener("click", () => {
       washer.reset();
+      addTelemetryEvent("洗衣机", "重置", "洗衣机已回到待机状态", "system");
       render();
     });
 
@@ -785,11 +1001,25 @@
       setActiveButton(elements.modeButtons, "button", state.mode, "data-fridge-mode");
       updateSegmentPills();
       syncFridgeLogicHighlight(state.warningFlag);
+      updateTelemetryMetrics({
+        energyScore: state.energyScore,
+        warningFlag: state.warningFlag
+      });
 
       if (enteredWarning) {
         triggerOnce(elements.warningLamp, "shake");
         triggerOnce(elements.warningReadout, "shake");
         showToast(state.warningFlag === WARNING_FLAGS.DOOR_OPEN ? "出现开门提醒" : "出现高温提醒", "warning");
+      }
+
+      if (previousWarningFlag !== state.warningFlag) {
+        if (state.warningFlag === WARNING_FLAGS.NORMAL) {
+          addTelemetryEvent("冰箱", "恢复", "告警恢复正常", "success");
+        } else if (state.warningFlag === WARNING_FLAGS.DOOR_OPEN) {
+          addTelemetryEvent("冰箱", "告警", "开门提醒已触发", "warning");
+        } else if (state.warningFlag === WARNING_FLAGS.HIGH_TEMP) {
+          addTelemetryEvent("冰箱", "告警", "高温提醒已触发", "warning");
+        }
       }
 
       previousWarningFlag = state.warningFlag;
@@ -800,8 +1030,10 @@
         const delta = Number(button.dataset.tempDelta);
         if (button.dataset.tempTarget === "fridge") {
           refrigerator.setFridgeTemp(refrigerator.state.fridgeTemp + delta);
+          addTelemetryEvent("冰箱", "温度调节", `冷藏室调整至 ${refrigerator.state.fridgeTemp}°C`, "info");
         } else {
           refrigerator.setFreezerTemp(refrigerator.state.freezerTemp + delta);
+          addTelemetryEvent("冰箱", "温度调节", `冷冻室调整至 ${refrigerator.state.freezerTemp}°C`, "info");
         }
         render();
       });
@@ -812,12 +1044,17 @@
       if (!button) {
         return;
       }
+      const previousMode = refrigerator.state.mode;
       refrigerator.setMode(button.dataset.fridgeMode);
+      if (previousMode !== refrigerator.state.mode) {
+        addTelemetryEvent("冰箱", "模式切换", `已切换至${refrigerator.state.mode}`, "system");
+      }
       render();
     });
 
     elements.doorToggle.addEventListener("click", () => {
       refrigerator.toggleDoor();
+      addTelemetryEvent("冰箱", "门状态", refrigerator.state.doorOpen ? "冰箱门已打开" : "冰箱门已关闭", "system");
       render();
     });
 
@@ -825,6 +1062,7 @@
   }
 
   function initApp() {
+    initTelemetryUI();
     initWasherUI();
     initRefrigeratorUI();
     initRipples();

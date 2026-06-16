@@ -1048,6 +1048,194 @@ p {
     linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(236, 254, 255, 0.82));
 }
 
+.telemetry-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.telemetry-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.telemetry-metric,
+.telemetry-panel {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: var(--shadow-soft);
+}
+
+.telemetry-metric {
+  padding: 18px;
+}
+
+.telemetry-metric span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.telemetry-metric strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--blue);
+  font-size: 1.55rem;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.telemetry-metric strong.warning {
+  color: var(--amber);
+}
+
+.telemetry-panel {
+  overflow: hidden;
+}
+
+.telemetry-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 430px);
+  gap: 18px;
+  align-items: center;
+  padding: 18px;
+  border-bottom: 1px solid var(--line);
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.9), rgba(236, 254, 255, 0.62)),
+    var(--card);
+}
+
+.telemetry-toolbar h3 {
+  margin-bottom: 3px;
+  font-size: 1.1rem;
+}
+
+.telemetry-toolbar p {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.telemetry-filter {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.telemetry-list {
+  display: grid;
+  gap: 10px;
+  min-height: 236px;
+  max-height: 430px;
+  padding: 16px;
+  overflow-y: auto;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.72), rgba(255, 255, 255, 0.9));
+}
+
+.telemetry-item {
+  display: grid;
+  grid-template-columns: 76px 76px 88px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 13px;
+  border: 1px solid rgba(226, 232, 240, 0.88);
+  border-left: 5px solid var(--blue);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+  animation: telemetry-enter 320ms ease-out both;
+}
+
+.telemetry-time,
+.telemetry-device,
+.telemetry-type {
+  font-size: 0.84rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.telemetry-time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.telemetry-device {
+  color: var(--blue);
+}
+
+.telemetry-type {
+  color: var(--cyan);
+}
+
+.telemetry-message {
+  min-width: 0;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 760;
+}
+
+.telemetry-level {
+  width: fit-content;
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: var(--blue);
+  background: var(--soft-blue);
+  font-size: 0.78rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.telemetry-level-success {
+  border-left-color: var(--green);
+}
+
+.telemetry-level-success .telemetry-type,
+.telemetry-level-success .telemetry-level {
+  color: var(--green);
+}
+
+.telemetry-level-success .telemetry-level {
+  background: var(--soft-green);
+}
+
+.telemetry-level-warning {
+  border-left-color: var(--amber);
+  background: linear-gradient(90deg, var(--soft-amber), var(--card) 34%);
+}
+
+.telemetry-level-warning .telemetry-type,
+.telemetry-level-warning .telemetry-level {
+  color: var(--amber);
+}
+
+.telemetry-level-warning .telemetry-level {
+  background: var(--soft-amber);
+}
+
+.telemetry-level-system {
+  border-left-color: var(--cyan);
+}
+
+.telemetry-empty {
+  align-self: center;
+  justify-self: center;
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+  text-align: center;
+}
+
+@keyframes telemetry-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .setting-grid,
 .temperature-grid,
 .fridge-status-grid {
@@ -1474,6 +1662,7 @@ code {
   .hero,
   .section-heading.split,
   .device-dashboard,
+  .telemetry-toolbar,
   .overview-grid,
   .highlight-grid {
     grid-template-columns: 1fr;
@@ -1489,6 +1678,10 @@ code {
 
   .highlight-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .telemetry-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .hero h1 {
@@ -1550,6 +1743,8 @@ code {
   .setting-grid,
   .temperature-grid,
   .fridge-status-grid,
+  .telemetry-metrics,
+  .telemetry-item,
   .logic-code-grid,
   .highlight-grid {
     grid-template-columns: 1fr;
@@ -1581,6 +1776,20 @@ code {
   .segmented,
   .segmented.compact {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .telemetry-toolbar,
+  .telemetry-list {
+    padding: 14px;
+  }
+
+  .telemetry-item {
+    gap: 6px;
+    align-items: start;
+  }
+
+  .telemetry-level {
+    margin-top: 2px;
   }
 
   .action-row {

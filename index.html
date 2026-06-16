@@ -22,6 +22,7 @@
       <div class="nav-links">
         <a href="#overview">项目简介</a>
         <a href="#devices">设备控制</a>
+        <a href="#telemetry">运行日志</a>
         <a href="#logic">C 逻辑</a>
         <a href="#highlights">技术亮点</a>
       </div>
@@ -278,6 +279,62 @@
             </div>
           </div>
         </article>
+      </div>
+    </section>
+
+    <section id="telemetry" class="section telemetry-section" aria-labelledby="telemetry-title">
+      <div class="section-heading split">
+        <div>
+          <p class="section-label">Telemetry Log</p>
+          <h2 id="telemetry-title">设备运行日志</h2>
+        </div>
+        <p>
+          记录洗衣机与冰箱的关键状态变化，模拟智能家电中的运行事件采集、告警追踪与状态监控。
+        </p>
+      </div>
+
+      <div class="telemetry-shell">
+        <div class="telemetry-metrics" aria-label="设备运行指标">
+          <article class="telemetry-metric">
+            <span>洗衣进度</span>
+            <strong id="telemetryWasherProgress">0%</strong>
+          </article>
+          <article class="telemetry-metric">
+            <span>剩余时间</span>
+            <strong id="telemetryWasherTime">28 分钟</strong>
+          </article>
+          <article class="telemetry-metric">
+            <span>节能评分</span>
+            <strong id="telemetryEnergyScore">82%</strong>
+          </article>
+          <article class="telemetry-metric">
+            <span>告警状态</span>
+            <strong id="telemetryWarningStatus">正常</strong>
+          </article>
+          <article class="telemetry-metric">
+            <span>事件数量</span>
+            <strong id="telemetryEventCount">0</strong>
+          </article>
+        </div>
+
+        <div class="telemetry-panel">
+          <div class="telemetry-toolbar">
+            <div>
+              <h3>实时事件</h3>
+              <p>展示设备状态、阶段、告警和温度变化。</p>
+            </div>
+            <div class="segmented telemetry-filter" id="telemetryFilterButtons" aria-label="筛选运行日志">
+              <button type="button" class="active" data-telemetry-filter="all">全部</button>
+              <button type="button" data-telemetry-filter="washer">洗衣机</button>
+              <button type="button" data-telemetry-filter="fridge">冰箱</button>
+              <button type="button" data-telemetry-filter="warning">告警</button>
+            </div>
+          </div>
+
+          <div id="telemetryList" class="telemetry-list" aria-live="polite">
+            <p class="telemetry-empty">暂无事件，操作设备后会自动记录运行日志。</p>
+          </div>
+        </div>
       </div>
     </section>
 
