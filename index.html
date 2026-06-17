@@ -215,13 +215,45 @@
           </div>
 
           <div class="appliance-screen">
+            <div class="fridge-ambient" aria-hidden="true">
+              <span class="wake-scan"></span>
+              <span class="boot-grid"></span>
+              <span class="boot-meter"></span>
+              <span class="boot-status">小冰晶正在唤醒系统...</span>
+              <div class="fridge-face">
+                <span class="eye left"></span>
+                <span class="eye right"></span>
+              </div>
+              <div class="cute-snow-core">
+                <span class="snowflake">✦</span>
+              </div>
+              <div class="cute-cold-wave"></div>
+              <span class="boot-path-glow"></span>
+              <div class="boot-mascot">
+                <span class="mascot-glow"></span>
+                <span class="mascot-body">
+                  <i></i>
+                  <i></i>
+                </span>
+                <span class="mascot-spark">✦</span>
+              </div>
+              <div class="cooling-ripple"></div>
+              <span class="cooling-breath"></span>
+              <span class="frost-field"></span>
+              <span class="snow-layer"></span>
+              <span class="door-light"></span>
+              <span class="cold-mist"></span>
+            </div>
             <div class="screen-toolbar">
               <span>智能温控屏</span>
-              <span class="soft-status" id="fridgeModeLabel">标准模式</span>
+              <div class="toolbar-actions">
+                <span class="soft-status" id="fridgeModeLabel">标准模式</span>
+                <button type="button" class="mini-action boot-replay" id="fridgeBootReplay">重新唤醒</button>
+              </div>
             </div>
 
             <div class="temperature-grid">
-              <div class="temperature-card">
+              <div class="temperature-card" data-boot-module="fridge-temp">
                 <span class="field-label">冷藏室</span>
                 <strong id="fridgeTemp">4°C</strong>
                 <div class="stepper" aria-label="调节冷藏室温度">
@@ -229,7 +261,7 @@
                   <button type="button" data-temp-target="fridge" data-temp-delta="1">+</button>
                 </div>
               </div>
-              <div class="temperature-card freeze">
+              <div class="temperature-card freeze" data-boot-module="freezer-temp">
                 <span class="field-label">冷冻室</span>
                 <strong id="freezerTemp">-18°C</strong>
                 <div class="stepper" aria-label="调节冷冻室温度">
@@ -239,7 +271,7 @@
               </div>
             </div>
 
-            <div class="control-group" aria-labelledby="fridge-mode-label-text">
+            <div class="control-group" aria-labelledby="fridge-mode-label-text" data-boot-module="mode">
               <div class="control-label" id="fridge-mode-label-text">当前模式</div>
               <div class="segmented" id="fridgeModeButtons">
                 <button type="button" data-fridge-mode="标准模式" class="active">标准模式</button>
@@ -249,7 +281,7 @@
               </div>
             </div>
 
-            <div class="fridge-status-grid">
+            <div class="fridge-status-grid" data-boot-module="status">
               <div class="readout">
                 <span class="field-label">门状态</span>
                 <strong id="doorState">已关闭</strong>
@@ -263,7 +295,7 @@
               </div>
             </div>
 
-            <div class="trend-panel">
+            <div class="trend-panel" data-boot-module="trend">
               <div class="trend-heading">
                 <span>温度可视化</span>
                 <span id="energySavingLabel">节能状态：均衡</span>

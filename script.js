@@ -44,6 +44,13 @@
     [WARNING_FLAGS.HIGH_TEMP]: ["warning-fridge-high", "warning-freezer-high", "warning-high-temp-branch"]
   };
 
+  const FRIDGE_MODE_CLASS_MAP = {
+    [FRIDGE_MODES.NORMAL]: "mode-normal",
+    [FRIDGE_MODES.ECO]: "mode-eco",
+    [FRIDGE_MODES.VACATION]: "mode-vacation",
+    [FRIDGE_MODES.FAST_FREEZE]: "mode-fast-freeze"
+  };
+  const FRIDGE_MODE_CLASSES = Object.values(FRIDGE_MODE_CLASS_MAP);
   const WASHER_LOGIC_PREFIXES = ["washer-"];
   const FRIDGE_LOGIC_PREFIXES = ["warning-", "fridge-"];
   const TELEMETRY_FILTERS = {
@@ -295,6 +302,14 @@
     return clamp(((value - min) / (max - min)) * 100, 6, 100);
   }
 
+  function getFridgeModeClass(mode) {
+    return FRIDGE_MODE_CLASS_MAP[mode] || FRIDGE_MODE_CLASS_MAP[FRIDGE_MODES.NORMAL];
+  }
+
+  function getTemperatureWarmth(value, safeValue, warningValue) {
+    return clamp((value - safeValue) / (warningValue - safeValue), 0, 1);
+  }
+
   function formatLogTime(date = new Date()) {
     return date.toLocaleTimeString("zh-CN", {
       hour12: false,
@@ -536,6 +551,14 @@
     }
 
     element._countFrame = globalScope.requestAnimationFrame(step);
+  }
+
+  function stopCountAnimation(element) {
+    if (!element || !element._countFrame) {
+      return;
+    }
+    globalScope.cancelAnimationFrame(element._countFrame);
+    element._countFrame = null;
   }
 
   function triggerOnce(element, className) {
@@ -835,6 +858,18 @@
       elements.progressTrack.classList.toggle("running", state.isRunning);
       elements.start.textContent = state.status === WASHER_STATUS.FINISHED ? "再次开始" : "开始";
       elements.runLabel.textContent = state.isRunning ? "运行中" : state.status === WASHER_STATUS.FINISHED ? "洗涤完成" : "待机状态";
+      elements.card.classList.remove("washer-stage-washing", "washer-stage-rinsing", "washer-stage-spinning");
+      if (state.status === WASHER_STATUS.WASHING) {
+        elements.card.classList.add("washer-stage-washing");
+      } else if (state.status === WASHER_STATUS.RINSING) {
+        elements.card.classList.add("washer-stage-rinsing");
+      } else if (state.status === WASHER_STATUS.SPINNING) {
+        elements.card.classList.add("washer-stage-spinning");
+      }
+      elements.card.classList.toggle(
+        "washer-spinning-fast",
+        state.isRunning && state.status === WASHER_STATUS.SPINNING && state.spinSpeed === "高速"
+      );
 
       elements.statusChip.querySelector("span:last-child").textContent = state.status;
       elements.statusChip.className = `status-pill ${state.status === WASHER_STATUS.FINISHED ? "success" : state.isRunning ? "success" : ""}`;
@@ -943,12 +978,16 @@
     const refrigerator = createRefrigeratorModel();
     const elements = {
       card: document.querySelector(".fridge-card"),
+      screen: document.querySelector(".fridge-card .appliance-screen"),
+      fridgeTempCard: document.querySelector(".fridge-card .temperature-card:not(.freeze)"),
+      freezerTempCard: document.querySelector(".fridge-card .temperature-card.freeze"),
       fridgeTemp: document.getElementById("fridgeTemp"),
       freezerTemp: document.getElementById("freezerTemp"),
       doorState: document.getElementById("doorState"),
       warningState: document.getElementById("warningState"),
       warningCopy: document.getElementById("warningCopy"),
       doorToggle: document.getElementById("doorToggle"),
+      bootReplay: document.getElementById("fridgeBootReplay"),
       modeButtons: document.getElementById("fridgeModeButtons"),
       warningLamp: document.getElementById("fridgeWarningLamp"),
       warningReadout: document.querySelector(".warning-readout"),
@@ -959,15 +998,40 @@
       freezerBar: document.getElementById("freezerTempBar")
     };
     let previousWarningFlag = refrigerator.state.warningFlag;
+    let previousMode = refrigerator.state.mode;
+    let isBooting = false;
+    let bootTimer = null;
 
     function render() {
       const state = refrigerator.state;
       const enteredWarning =
         previousWarningFlag === WARNING_FLAGS.NORMAL &&
         state.warningFlag !== WARNING_FLAGS.NORMAL;
+      const modeClass = getFridgeModeClass(state.mode);
+      const fridgeWarmth = getTemperatureWarmth(state.fridgeTemp, 5, 8);
+      const freezerWarmth = getTemperatureWarmth(state.freezerTemp, -18, -12);
 
-      countUp(elements.fridgeTemp, state.fridgeTemp, { suffix: "°C", duration: 380 });
-      countUp(elements.freezerTemp, state.freezerTemp, { suffix: "°C", duration: 380 });
+      elements.card.classList.remove(...FRIDGE_MODE_CLASSES);
+      elements.card.classList.add(modeClass);
+      elements.card.classList.toggle("fast-freeze", state.mode === FRIDGE_MODES.FAST_FREEZE);
+      elements.card.classList.toggle("door-open", state.doorOpen);
+      elements.card.classList.toggle("warning-active", state.warningFlag !== WARNING_FLAGS.NORMAL);
+      elements.card.classList.toggle("fridge-booting", isBooting);
+      elements.card.classList.toggle("fridge-boot-complete", !isBooting);
+      elements.fridgeTempCard.style.setProperty("--warmth-alpha", (fridgeWarmth * 0.18).toFixed(3));
+      elements.fridgeTempCard.style.setProperty("--warmth-glow", (fridgeWarmth * 0.2).toFixed(3));
+      elements.freezerTempCard.style.setProperty("--warmth-alpha", (freezerWarmth * 0.2).toFixed(3));
+      elements.freezerTempCard.style.setProperty("--warmth-glow", (freezerWarmth * 0.22).toFixed(3));
+
+      if (isBooting) {
+        stopCountAnimation(elements.fridgeTemp);
+        stopCountAnimation(elements.freezerTemp);
+        elements.fridgeTemp.textContent = "--";
+        elements.freezerTemp.textContent = "--";
+      } else {
+        countUp(elements.fridgeTemp, state.fridgeTemp, { suffix: "°C", duration: 380 });
+        countUp(elements.freezerTemp, state.freezerTemp, { suffix: "°C", duration: 380 });
+      }
       elements.doorState.textContent = state.doorOpen ? "已开门" : "已关闭";
       elements.warningState.textContent = state.warningFlag;
       elements.doorToggle.textContent = state.doorOpen ? "模拟关门" : "模拟开门";
@@ -976,7 +1040,6 @@
       elements.energySavingLabel.textContent = state.energyLabel;
       elements.fridgeBar.style.width = `${percentFromRange(state.fridgeTemp, 1, 10)}%`;
       elements.freezerBar.style.width = `${percentFromRange(state.freezerTemp, -26, -10)}%`;
-      elements.card.classList.toggle("fast-freeze", state.mode === FRIDGE_MODES.FAST_FREEZE);
 
       if (state.warningFlag === WARNING_FLAGS.DOOR_OPEN) {
         elements.warningCopy.textContent = "门体传感器检测到开门状态，请关闭冰箱门以恢复节能运行。";
@@ -1012,6 +1075,10 @@
         showToast(state.warningFlag === WARNING_FLAGS.DOOR_OPEN ? "出现开门提醒" : "出现高温提醒", "warning");
       }
 
+      if (previousMode !== state.mode) {
+        triggerOnce(elements.card, "mode-transition");
+      }
+
       if (previousWarningFlag !== state.warningFlag) {
         if (state.warningFlag === WARNING_FLAGS.NORMAL) {
           addTelemetryEvent("冰箱", "恢复", "告警恢复正常", "success");
@@ -1023,6 +1090,39 @@
       }
 
       previousWarningFlag = state.warningFlag;
+      previousMode = state.mode;
+    }
+
+    function finishFridgeBootAnimation() {
+      if (bootTimer) {
+        globalScope.clearTimeout(bootTimer);
+        bootTimer = null;
+      }
+      isBooting = false;
+      render();
+    }
+
+    function startFridgeBootAnimation() {
+      if (prefersReducedMotion()) {
+        finishFridgeBootAnimation();
+        return;
+      }
+
+      if (bootTimer) {
+        globalScope.clearTimeout(bootTimer);
+        bootTimer = null;
+      }
+
+      isBooting = false;
+      elements.card.classList.remove("fridge-booting", "fridge-boot-complete");
+      void elements.card.offsetWidth;
+      isBooting = true;
+      render();
+      bootTimer = globalScope.setTimeout(finishFridgeBootAnimation, 2700);
+    }
+
+    function replayFridgeBootAnimation() {
+      startFridgeBootAnimation();
     }
 
     document.querySelectorAll("[data-temp-target]").forEach((button) => {
@@ -1058,7 +1158,9 @@
       render();
     });
 
-    render();
+    elements.bootReplay.addEventListener("click", replayFridgeBootAnimation);
+
+    startFridgeBootAnimation();
   }
 
   function initApp() {
