@@ -310,6 +310,146 @@
     return clamp((value - safeValue) / (warningValue - safeValue), 0, 1);
   }
 
+  let heroHubElements = null;
+
+  function getHeroHubElements() {
+    if (typeof document === "undefined") {
+      return {};
+    }
+
+    if (!heroHubElements) {
+      heroHubElements = {
+        washer: document.getElementById("heroWasherPreview"),
+        washerStatus: document.getElementById("heroWasherStatus"),
+        washerProgress: document.getElementById("heroWasherProgress"),
+        washerProgressBar: document.getElementById("heroWasherProgressBar"),
+        washerTime: document.getElementById("heroWasherTime"),
+        washerTimeBar: document.getElementById("heroWasherTimeBar"),
+        washerMode: document.getElementById("heroWasherMode"),
+        washerTimePanel: document.getElementById("heroWasherTimePanel"),
+        fridge: document.getElementById("heroFridgePreview"),
+        fridgeTemp: document.getElementById("heroFridgeTemp"),
+        freezerTemp: document.getElementById("heroFreezerTemp"),
+        fridgeScreenTemp: document.getElementById("heroFridgeScreenTemp"),
+        freezerScreenTemp: document.getElementById("heroFreezerScreenTemp"),
+        fridgeMode: document.getElementById("heroFridgeMode"),
+        fridgeStatus: document.getElementById("heroFridgeStatus"),
+        energyPanel: document.getElementById("heroEnergyPanel"),
+        energyScore: document.getElementById("heroEnergyScore"),
+        energyStatus: document.getElementById("heroEnergyStatus")
+      };
+    }
+
+    return heroHubElements;
+  }
+
+  function setClassGroup(element, classNames, activeClass) {
+    if (!element) {
+      return;
+    }
+    element.classList.remove(...classNames);
+    if (activeClass) {
+      element.classList.add(activeClass);
+    }
+  }
+
+  function getHeroWasherClass(status) {
+    if (status === WASHER_STATUS.WASHING) {
+      return "hero-washer-running";
+    }
+    if (status === WASHER_STATUS.RINSING) {
+      return "hero-washer-rinsing";
+    }
+    if (status === WASHER_STATUS.SPINNING) {
+      return "hero-washer-spinning";
+    }
+    if (status === WASHER_STATUS.FINISHED) {
+      return "hero-washer-finished";
+    }
+    return "hero-washer-idle";
+  }
+
+  function updateHeroWasherPreview(state) {
+    const elements = getHeroHubElements();
+    if (!elements.washer) {
+      return;
+    }
+
+    const progress = Math.round(state.progress);
+    const remainingPercent = state.duration > 0
+      ? clamp((state.remainingTime / state.duration) * 100, 0, 100)
+      : 0;
+
+    elements.washerStatus.textContent = state.status;
+    elements.washerMode.textContent = state.mode;
+    countUp(elements.washerProgress, progress, { suffix: "%", duration: 360 });
+    countUp(elements.washerTime, state.remainingTime, { duration: 360 });
+    elements.washerProgressBar.style.width = `${progress}%`;
+    elements.washerTimeBar.style.width = `${remainingPercent}%`;
+
+    setClassGroup(
+      elements.washer,
+      ["hero-washer-idle", "hero-washer-running", "hero-washer-rinsing", "hero-washer-spinning", "hero-washer-finished"],
+      getHeroWasherClass(state.status)
+    );
+    setClassGroup(
+      elements.washer,
+      ["hero-spin-low", "hero-spin-medium", "hero-spin-high"],
+      `hero-spin-${state.spinSpeed === "低速" ? "low" : state.spinSpeed === "高速" ? "high" : "medium"}`
+    );
+    elements.washer.classList.toggle("is-running", state.isRunning);
+    elements.washerTimePanel.classList.toggle("is-running", state.isRunning);
+  }
+
+  function getHeroFridgeModeClass(mode) {
+    if (mode === FRIDGE_MODES.ECO) {
+      return "hero-fridge-eco";
+    }
+    if (mode === FRIDGE_MODES.VACATION) {
+      return "hero-fridge-vacation";
+    }
+    if (mode === FRIDGE_MODES.FAST_FREEZE) {
+      return "hero-fridge-fast-freeze";
+    }
+    return "hero-fridge-normal";
+  }
+
+  function getHeroFridgeStatus(state) {
+    if (state.warningFlag !== WARNING_FLAGS.NORMAL) {
+      return state.warningFlag;
+    }
+    if (state.doorOpen) {
+      return "已开门";
+    }
+    return "运行良好";
+  }
+
+  function updateHeroFridgePreview(state) {
+    const elements = getHeroHubElements();
+    if (!elements.fridge) {
+      return;
+    }
+
+    elements.fridgeMode.textContent = state.mode;
+    elements.fridgeStatus.textContent = getHeroFridgeStatus(state);
+    elements.energyStatus.textContent = state.warningFlag === WARNING_FLAGS.NORMAL ? "运行良好" : state.warningFlag;
+    countUp(elements.fridgeTemp, state.fridgeTemp, { suffix: "°C", duration: 360 });
+    countUp(elements.freezerTemp, state.freezerTemp, { suffix: "°C", duration: 360 });
+    countUp(elements.fridgeScreenTemp, state.fridgeTemp, { suffix: "°C", duration: 360 });
+    countUp(elements.freezerScreenTemp, state.freezerTemp, { suffix: "°C", duration: 360 });
+    countUp(elements.energyScore, state.energyScore, { suffix: "%", duration: 360 });
+
+    setClassGroup(
+      elements.fridge,
+      ["hero-fridge-normal", "hero-fridge-eco", "hero-fridge-vacation", "hero-fridge-fast-freeze"],
+      getHeroFridgeModeClass(state.mode)
+    );
+    elements.fridge.classList.toggle("hero-fridge-warning", state.warningFlag !== WARNING_FLAGS.NORMAL);
+    elements.fridge.classList.toggle("hero-fridge-door-open", state.warningFlag === WARNING_FLAGS.DOOR_OPEN);
+    elements.fridge.classList.toggle("hero-fridge-high-temp", state.warningFlag === WARNING_FLAGS.HIGH_TEMP);
+    elements.energyPanel.classList.toggle("warning", state.warningFlag !== WARNING_FLAGS.NORMAL);
+  }
+
   function formatLogTime(date = new Date()) {
     return date.toLocaleTimeString("zh-CN", {
       hour12: false,
@@ -848,24 +988,46 @@
       const enteredFinished =
         previousWasherStatus !== WASHER_STATUS.FINISHED &&
         state.status === WASHER_STATUS.FINISHED;
+      const phase = {
+        [WASHER_STATUS.IDLE]: "idle",
+        [WASHER_STATUS.WASHING]: "wash",
+        [WASHER_STATUS.RINSING]: "rinse",
+        [WASHER_STATUS.SPINNING]: "spin",
+        [WASHER_STATUS.FINISHED]: "done"
+      }[state.status] || "idle";
 
       elements.state.textContent = state.status;
       countUp(elements.time, state.remainingTime, { suffix: " 分钟", duration: 420 });
       countUp(elements.progressLabel, state.progress, { suffix: "%", duration: 420 });
       elements.progressFill.style.width = `${state.progress}%`;
       elements.progressRing.style.setProperty("--progress", `${progressDegree}deg`);
+      elements.progressRing.dataset.phase = phase;
       elements.progressRing.classList.toggle("running", state.isRunning);
       elements.progressTrack.classList.toggle("running", state.isRunning);
       elements.start.textContent = state.status === WASHER_STATUS.FINISHED ? "再次开始" : "开始";
       elements.runLabel.textContent = state.isRunning ? "运行中" : state.status === WASHER_STATUS.FINISHED ? "洗涤完成" : "待机状态";
-      elements.card.classList.remove("washer-stage-washing", "washer-stage-rinsing", "washer-stage-spinning");
+      elements.card.classList.remove(
+        "washer-stage-idle",
+        "washer-stage-washing",
+        "washer-stage-rinsing",
+        "washer-stage-spinning",
+        "washer-stage-finished",
+        "spin-low",
+        "spin-medium",
+        "spin-high"
+      );
       if (state.status === WASHER_STATUS.WASHING) {
         elements.card.classList.add("washer-stage-washing");
       } else if (state.status === WASHER_STATUS.RINSING) {
         elements.card.classList.add("washer-stage-rinsing");
       } else if (state.status === WASHER_STATUS.SPINNING) {
         elements.card.classList.add("washer-stage-spinning");
+      } else if (state.status === WASHER_STATUS.FINISHED) {
+        elements.card.classList.add("washer-stage-finished");
+      } else {
+        elements.card.classList.add("washer-stage-idle");
       }
+      elements.card.classList.add(`spin-${state.spinSpeed === "低速" ? "low" : state.spinSpeed === "高速" ? "high" : "medium"}`);
       elements.card.classList.toggle(
         "washer-spinning-fast",
         state.isRunning && state.status === WASHER_STATUS.SPINNING && state.spinSpeed === "高速"
@@ -887,6 +1049,7 @@
       setActiveButton(elements.tempButtons, "button", state.temperature, "data-washer-temp");
       setActiveButton(elements.spinButtons, "button", state.spinSpeed, "data-washer-spin");
       updateSegmentPills();
+      updateHeroWasherPreview(state);
       syncWasherLogicHighlight(state.status);
       updateTelemetryMetrics({
         washerProgress: state.progress,
@@ -894,6 +1057,7 @@
       });
 
       if (enteredWashing) {
+        triggerOnce(elements.progressRing, "water-splash");
         showToast("开始洗涤", "info");
       }
 
@@ -1063,6 +1227,7 @@
 
       setActiveButton(elements.modeButtons, "button", state.mode, "data-fridge-mode");
       updateSegmentPills();
+      updateHeroFridgePreview(state);
       syncFridgeLogicHighlight(state.warningFlag);
       updateTelemetryMetrics({
         energyScore: state.energyScore,

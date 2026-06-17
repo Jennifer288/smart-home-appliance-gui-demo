@@ -8,7 +8,7 @@
     content="智能家电图形界面演示项目：使用 HTML、CSS、JavaScript 模拟洗衣机和冰箱嵌入式触控屏 GUI，并通过 C 文件展示状态机与控制逻辑。"
   />
   <title>智能家电图形界面演示项目</title>
-  <link rel="stylesheet" href="style.css?v=20260617" />
+  <link rel="stylesheet" href="style.css?v=20260617-hero-sync" />
 </head>
 <body>
   <header class="site-header">
@@ -50,29 +50,84 @@
             <span>家庭设备中控</span>
             <span class="soft-status"><span class="status-dot success"></span>在线</span>
           </div>
-          <div class="hero-metrics">
-            <div class="metric-tile">
-              <span class="metric-icon water-icon" aria-hidden="true"></span>
-              <small>洗衣机</small>
-              <strong>洗涤中</strong>
-            </div>
-            <div class="metric-tile">
-              <span class="metric-icon frost-icon" aria-hidden="true"></span>
-              <small>冰箱</small>
-              <strong>4°C / -18°C</strong>
+          <div class="hero-appliance-showcase">
+            <div class="showcase-devices">
+              <article class="showcase-device showcase-washer" id="heroWasherPreview" aria-label="洗衣机动态图形预览">
+                <div class="showcase-device-copy">
+                  <small>洗衣机 · <span id="heroWasherMode">快洗</span></small>
+                  <strong id="heroWasherStatus">待机</strong>
+                  <span id="heroWasherProgress">0%</span>
+                </div>
+                <div class="showcase-washer-visual" aria-hidden="true">
+                  <div class="showcase-washer-door">
+                    <div class="showcase-washer-window">
+                      <div class="showcase-washer-drum">
+                        <span class="showcase-paddle"></span>
+                        <span class="showcase-paddle"></span>
+                        <span class="showcase-paddle"></span>
+                        <span class="showcase-cloth"></span>
+                        <span class="showcase-cloth"></span>
+                      </div>
+                      <div class="showcase-washer-water">
+                        <span class="showcase-water-wave"></span>
+                        <span class="showcase-water-wave"></span>
+                      </div>
+                      <div class="showcase-bubbles">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="showcase-device-progress" aria-hidden="true"><span id="heroWasherProgressBar"></span></div>
+              </article>
+
+              <article class="showcase-device showcase-fridge" id="heroFridgePreview" aria-label="冰箱动态图形预览">
+                <div class="showcase-device-copy">
+                  <small>冰箱 · <span id="heroFridgeMode">标准模式</span></small>
+                  <strong><span id="heroFridgeTemp">4°C</span> / <span id="heroFreezerTemp">-18°C</span></strong>
+                  <span id="heroFridgeStatus">运行良好</span>
+                </div>
+                <div class="showcase-fridge-visual" aria-hidden="true">
+                  <div class="showcase-fridge-shell">
+                    <div class="showcase-fridge-screen">
+                      <span id="heroFridgeScreenTemp">4°C</span>
+                      <span id="heroFreezerScreenTemp">-18°C</span>
+                    </div>
+                    <div class="showcase-fridge-zones">
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </div>
+                  <div class="showcase-cold-air">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                  <div class="showcase-snow">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              </article>
             </div>
           </div>
-          <div class="hero-device-row">
-            <div class="mini-screen">
+          <div class="showcase-metrics hero-device-row">
+            <div class="mini-screen" id="heroWasherTimePanel">
               <span>剩余时间</span>
-              <strong>28</strong>
+              <strong id="heroWasherTime">28</strong>
               <small>分钟</small>
-              <div class="mini-bar"><span></span></div>
+              <div class="mini-bar"><span id="heroWasherTimeBar"></span></div>
             </div>
-            <div class="mini-screen cool">
+            <div class="mini-screen cool" id="heroEnergyPanel">
               <span>节能状态</span>
-              <strong>92%</strong>
-              <small>运行良好</small>
+              <strong id="heroEnergyScore">82%</strong>
+              <small id="heroEnergyStatus">运行良好</small>
               <div class="mini-bars">
                 <i></i><i></i><i></i><i></i>
               </div>
@@ -139,6 +194,41 @@
             <div class="washer-main">
               <div class="progress-ring" id="washerProgressRing" aria-label="洗衣机进度">
                 <div class="ring-core">
+                  <div class="washer-water-layer" aria-hidden="true">
+                    <div class="washer-water-fill">
+                      <span class="washer-wave wave-back"></span>
+                      <span class="washer-wave wave-front"></span>
+                      <svg class="washer-water-surface" viewBox="0 0 160 36" preserveAspectRatio="none">
+                        <path d="M -8 18 C 12 6, 28 30, 48 18 S 84 6, 104 18 S 140 30, 168 18" />
+                        <path d="M -8 24 C 16 14, 30 30, 52 23 S 88 13, 110 23 S 142 31, 168 22" />
+                      </svg>
+                    </div>
+                    <div class="washer-tumble" aria-hidden="true">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                    <div class="washer-drain-lines" aria-hidden="true">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                    <div class="washer-bubbles">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                    <div class="washer-vortex"><span></span></div>
+                  </div>
                   <span id="washerProgressLabel">0%</span>
                   <small>进度</small>
                 </div>
@@ -612,6 +702,6 @@ void checkRefrigeratorWarnings(Refrigerator *fridge)
 
   <div id="toastRegion" class="toast-region" aria-live="polite"></div>
 
-  <script src="script.js?v=20260617"></script>
+  <script src="script.js?v=20260617-porthole"></script>
 </body>
 </html>
